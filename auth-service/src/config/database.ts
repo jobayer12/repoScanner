@@ -1,4 +1,6 @@
-export default {
+import { registerAs } from '@nestjs/config';
+
+export default registerAs('database', () => ({
   client: 'pg',
   connection: {
     host: process.env.DATABASE_CONNECTION_HOST,
@@ -13,13 +15,13 @@ export default {
     idleTimeoutMillis: 60000,
   },
   acquireConnectionTimeout: 20000,
-  comigrations: {
-    enabled: +process.env.DATABASE_MIGRATION_ENABLED > 0,
+  migrations: {
+    enabled: (+process.env.DATABASE_MIGRATION_ENABLED || 0) > 0,
     tableName: process.env.DATABSE_MIGRATION_TABLE_NAME,
     directory: process.env.DATABASE_MIGRATION_DIR,
   },
   seeds: {
-    enabled: +process.env.DATABASE_SEED_ENABLED > 0,
+    enabled: (+process.env.DATABASE_SEED_ENABLED || 0) > 0,
     directory: process.env.DATABASE_SEED_DIR,
   },
-};
+}));
