@@ -1,11 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { ScanModule } from './modules/scan/scan.module';
 import { UserModule } from './modules/user/user.module';
 import routes from './router';
 import { RouterModule } from '@nestjs/core';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import DatabaseConfig from './config/database';
 import ZeroMQConfig from './config/zeromq';
 import CommonConfig from './config/common';
@@ -22,14 +20,20 @@ import { DatabaseModule } from './modules/database/database.module';
       isGlobal: true,
       load: [DatabaseConfig, ZeroMQConfig, CommonConfig, JWTConfig],
     }),
+    DatabaseModule,
     ScanModule,
     UserModule,
     GithubModule,
     ZeromqModule,
-    DatabaseModule,
     RouterModule.register(routes),
+    // KnexModule.forRootAsync({
+    //   useFactory: (configService: ConfigService) => ({
+    //     config: configService.get('database'),
+    //   }),
+    //   inject: [ConfigService],
+    // }),
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

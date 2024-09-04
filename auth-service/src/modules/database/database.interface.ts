@@ -1,5 +1,4 @@
-export interface IDatabase<T = any> {
-  connection(): Promise<T>;
-  migrations(): Promise<void>;
-  seeds(): Promise<void>;
+export interface IDatabase {
+  migrateLatest(): Promise<void>;
+  seedUp(): Promise<void>;
 }

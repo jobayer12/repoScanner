@@ -5,10 +5,10 @@ export default [
   {
     path: '/api/v1',
     children: [
-      // {
-      //   path: 'user',
-      //   module: UserModule,
-      // },
+      {
+        path: 'user',
+        module: UserModule,
+      },
       {
         path: 'scan',
         module: ScanModule,

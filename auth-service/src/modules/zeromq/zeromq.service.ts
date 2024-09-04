@@ -1,10 +1,10 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as zmq from 'zeromq';
 import { MessageLike } from 'zeromq';
 
 @Injectable()
-export class ZeromqService implements OnModuleInit {
+export class ZeromqService implements OnModuleInit, OnModuleDestroy {
   private publisher: zmq.Publisher;
 
   constructor(private readonly configService: ConfigService) {}
@@ -31,12 +31,17 @@ export class ZeromqService implements OnModuleInit {
   // Function to publish a message
   async publisherMessage(topic: MessageLike, message: string) {
     try {
-      console.log(`Publishing message on topic "${topic}"`, message);
       // Send the message with the specified topic
       this.publisher.send([topic, message]);
       return 'Message Queue Successfully';
     } catch (error) {
       console.error('Error publishing message:', error);
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.publisher) {
+      this.publisher.close();
     }
   }
 }

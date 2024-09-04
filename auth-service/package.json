@@ -17,7 +17,17 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "migrate:make": "knex migrate:make $1 --knexfile=./src/knexfile.ts",
+    "migrate:down": "knex migrate:down $1 --knexfile=./src/knexfile.ts",
+    "migrate:latest": "knex migrate:latest --knexfile=./src/knexfile.ts",
+    "seed:up": "knex seed:up --knexfile=./src/knexfile.ts",
+    "seed:make": "knex seed:make $1 --knexfile=./src/knexfile.ts",
+    "seed:down": "knex seed:down $1 --knexfile=./src/knexfile.ts"
+  },
+  "engines": {
+    "npm": ">=8.0.0",
+    "node": ">=20"
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.3",
@@ -33,6 +43,7 @@
     "class-validator": "^0.14.1",
     "knex": "^3.1.0",
     "knexnest": "^1.0.0",
+    "nanoid": "^5.0.7",
     "pg": "^8.12.0",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",

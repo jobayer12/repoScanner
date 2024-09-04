@@ -1,3 +1,4 @@
+import { UnauthorizedException } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Transform, TransformFnParams } from 'class-transformer';
 import { IsEmail, IsString, MinLength } from 'class-validator';
@@ -49,7 +50,7 @@ export class UserCreatePayload {
   @ApiProperty({ name: 'confirmPassword' })
   @Transform((params: TransformFnParams) => {
     if (params?.value !== params?.obj?.password) {
-      throw new Error(`password doesn't match`);
+      throw new UnauthorizedException(`password doesn't match`);
     }
     return params.value;
   })
@@ -57,7 +58,7 @@ export class UserCreatePayload {
 }
 
 export class UserLoginPayload {
-  @IsEmail()
+  @IsEmail({}, { message: 'Enter valid email address' })
   @ApiProperty({ name: 'email' })
   @Transform((params: TransformFnParams) => params.value.toLowerCase())
   @Expose({ name: 'email', toPlainOnly: true })
