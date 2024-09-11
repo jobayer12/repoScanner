@@ -5,6 +5,7 @@ dotenv.config();
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { HttpExceptionFilter } from './common/http-exception-filter/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AuthGuard } from './common/guards/AuthGuard';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -20,13 +21,14 @@ async function bootstrap() {
     .setVersion('1.0-beta')
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      'jwt-auth',
+      'jwt',
     )
     .build();
   const document = SwaggerModule.createDocument(app, options);
   SwaggerModule.setup('/api', app, document);
 
   app.useGlobalFilters(new HttpExceptionFilter());
+  // app.useGlobalGuards(new AuthGuard());
   await app.listen(3000);
 }
 bootstrap();

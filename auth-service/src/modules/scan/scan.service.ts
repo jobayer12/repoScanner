@@ -7,6 +7,7 @@ import { ZeromqService } from '../zeromq/zeromq.service';
 import { ScanPayloadDto } from './dto/scan.dto';
 import { GithubService } from '../github/github.service';
 import { ZeroMQPayload } from '../zeromq/dto/zeromq.payload';
+import { ZeroMQTopic } from '../../common/enum/zeromq-topic.enum';
 
 @Injectable()
 export class ScanService {
@@ -42,7 +43,7 @@ export class ScanService {
 
     try {
       await this.zeroMQService.publisherMessage(
-        'scan',
+        ZeroMQTopic.SCAN,
         JSON.stringify(zeromqPayload),
       );
     } catch (e) {

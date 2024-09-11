@@ -1,24 +1,44 @@
-import { UnauthorizedException } from '@nestjs/common';
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Transform, TransformFnParams } from 'class-transformer';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsNumber,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
-export class UserDetails {
+export class UserDto {
+  @IsNumber()
+  @ApiProperty({ name: 'id' })
+  @Expose({ name: 'id', toClassOnly: true })
+  id: number;
+
   @IsString()
-  @Expose({ name: 'first_name', toPlainOnly: true })
   @ApiProperty({ name: 'firstName' })
+  @Expose({ name: 'first_name', toPlainOnly: true })
   firstName: string;
 
   @IsString()
-  @Expose({ name: 'last_name', toPlainOnly: true })
   @ApiProperty({ name: 'lastName' })
+  @Expose({ name: 'last_name', toPlainOnly: true })
   lastName: string;
 
   @IsEmail()
   @ApiProperty({ name: 'email' })
-  @Transform((params: TransformFnParams) => params.value.toLowerCase())
-  @Expose({ name: 'email', toPlainOnly: true })
+  @Expose({ name: 'email', toClassOnly: true })
   email: string;
+
+  @IsBoolean()
+  @ApiProperty({ name: 'isVerified' })
+  @Expose({ name: 'is_verified', toPlainOnly: true })
+  isVerified: boolean;
+
+  @IsString()
+  @ApiProperty({ name: 'password' })
+  @Expose({ name: 'password', toPlainOnly: true })
+  password: string;
 }
 
 export class UserCreatePayload {
@@ -32,7 +52,7 @@ export class UserCreatePayload {
   @ApiProperty({ name: 'lastName' })
   lastName: string;
 
-  @IsEmail()
+  @IsEmail({}, { message: 'Enter valid email address' })
   @ApiProperty({ name: 'email' })
   @Transform((params: TransformFnParams) => params.value.toLowerCase())
   @Expose({ name: 'email', toPlainOnly: true })
@@ -40,21 +60,10 @@ export class UserCreatePayload {
 
   @IsString()
   @MinLength(5)
+  @MaxLength(15)
   @Expose({ name: 'password', toPlainOnly: true })
   @ApiProperty({ name: 'password' })
   password: string;
-
-  @IsString()
-  @MinLength(5)
-  @Expose({ name: 'confirm_password', toClassOnly: true })
-  @ApiProperty({ name: 'confirmPassword' })
-  @Transform((params: TransformFnParams) => {
-    if (params?.value !== params?.obj?.password) {
-      throw new UnauthorizedException(`password doesn't match`);
-    }
-    return params.value;
-  })
-  confirmPassword: string;
 }
 
 export class UserLoginPayload {
