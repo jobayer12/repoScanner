@@ -19,9 +19,9 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // Bind the publisher to a TCP address
-      const url = this.configService.get('zeromq.url');
+      const host = this.configService.get('zeromq.host');
       const port = this.configService.get('zeromq.port');
-      const connectionURL = `tcp://${url}:${port}`;
+      const connectionURL = `tcp://${host}:${port}`;
       await this.publisher.bind(connectionURL);
     } catch (error) {
       console.error('Error binding ZeroMQ Publisher:', error);
