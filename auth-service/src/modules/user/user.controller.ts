@@ -55,7 +55,6 @@ export class UserController {
     if (!userDetails) {
       throw new NotFoundException(`Invalid email address`);
     }
-    return false;
     return this.userService.resetPassword(
       userDetails.id,
       PasswordResetTypeEnum.RESET_PASSWORD,

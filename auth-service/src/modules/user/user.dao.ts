@@ -73,17 +73,28 @@ export class UserDao {
   async resetPassword(
     payload: PasswordResetDto,
   ): Promise<Array<PasswordResetDto>> {
-    const sql = this.knex
-      .insert(instanceToPlain(payload))
-      .into('reset_password')
-      .returning([
-        'id AS _id',
-        'user_id AS _userId',
-        'type AS _type',
-        'token AS _token',
-        'is_used AS _isUsed',
-      ]);
-    return knexnest(sql).then((response: any) =>
+    const transaction = this.knex.transaction(async (trx: Knex.Transaction) => {
+      return trx
+        .update({ is_used: true })
+        .into('reset_password')
+        .where({ user_id: payload.userId, is_used: false, type: payload.type })
+        .returning('id')
+        .then((ids) => {
+          return trx
+            .insert(instanceToPlain(payload))
+            .into('reset_password')
+            .returning([
+              'id AS _id',
+              'user_id AS _userId',
+              'type AS _type',
+              'token AS _token',
+              'is_used AS _isUsed',
+            ]);
+        })
+        .then(trx.commit)
+        .catch(trx.rollback);
+    });
+    return knexnest(transaction).then((response: any) =>
       plainToInstance(PasswordResetDto, response),
     );
   }
