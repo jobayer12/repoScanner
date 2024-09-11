@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-
+import ZeroMQ from './config/ZeroMQ';
+import { ConfigModule } from '@nestjs/config';
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      ignoreEnvFile: true,
+      cache: true,
+      isGlobal: true,
+      load: [ZeroMQ],
+    }),
+  ],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
