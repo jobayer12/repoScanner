@@ -108,11 +108,8 @@ export class UserService {
       verificationId,
       PasswordResetTypeEnum.VERIFY_ACCOUNT,
     );
-    console.log('resetPasswordDetails: ', resetPasswordDetails);
-    if (!resetPasswordDetails) {
+    if (!resetPasswordDetails || resetPasswordDetails.isUsed) {
       throw new NotFoundException('Invalid token');
-    } else if (resetPasswordDetails.isUsed) {
-      throw new ConflictException('Token already used');
     }
     const userDto = new UserDto();
     userDto.isVerified = true;
