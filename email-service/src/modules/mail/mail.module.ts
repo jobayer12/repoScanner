@@ -12,7 +12,7 @@ import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handleba
       useFactory: (configService: ConfigService) => ({
         transport: {
           host: configService.get('mail.host'),
-          port: configService.get('mail.port'),
+          port: Number(configService.get('mail.port')),
           auth: {
             user: configService.get('mail.user'),
             pass: configService.get('mail.pass'),
