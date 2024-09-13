@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ZeroMQTopic } from '../../common/enum/zeromq-topic.enum';
 import * as zmq from 'zeromq';
+import { EmailPayloads, ScanPayload } from './interfaces/EventPayloads';
 
 @Injectable()
 export class ZeromqService implements OnModuleInit, OnModuleDestroy {
@@ -29,13 +29,29 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Function to publish a message
-  async publisherMessage(topic: ZeroMQTopic, message: string): Promise<number> {
+  async publisherEmailQueue<K extends keyof EmailPayloads>(
+    event: K,
+    payload: EmailPayloads[K],
+  ): Promise<void> {
+    console.log('zero mq event', event);
+    console.log('zero mq payload', payload);
     try {
-      await this.publisher.send([topic, message]);
-      return 1;
+      await this.publisher.send([event, JSON.stringify(payload)]);
     } catch (error) {
       console.error('Error publishing message:', error);
-      return 1;
+    }
+  }
+
+  async publishScanQueue<K extends keyof ScanPayload>(
+    event: K,
+    payload: ScanPayload[K],
+  ): Promise<void> {
+    try {
+      console.log('zero mq scan event', event);
+      console.log('zero mq scan payload', payload);
+      await this.publisher.send([event, JSON.stringify(payload)]);
+    } catch (error) {
+      console.error('Error publishing message:', error);
     }
   }
 

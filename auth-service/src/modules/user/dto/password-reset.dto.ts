@@ -9,7 +9,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { PasswordResetTypeEnum } from 'src/common/enum/password-reset-type.enum';
+import { PasswordResetTypeEnum } from '../../../common/enum/password-reset-type.enum';
 
 export class PasswordResetDto {
   @IsOptional()

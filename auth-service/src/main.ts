@@ -5,7 +5,7 @@ dotenv.config();
 import { ValidationPipe } from '@nestjs/common/pipes/validation.pipe';
 import { HttpExceptionFilter } from './common/http-exception-filter/http-exception.filter';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AuthGuard } from './common/guards/AuthGuard';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -28,7 +28,8 @@ async function bootstrap() {
   SwaggerModule.setup('/api', app, document);
 
   app.useGlobalFilters(new HttpExceptionFilter());
+  const configService: ConfigService = app.get(ConfigService);
   // app.useGlobalGuards(new AuthGuard());
-  await app.listen(3000);
+  await app.listen(configService.get('common.port'));
 }
 bootstrap();

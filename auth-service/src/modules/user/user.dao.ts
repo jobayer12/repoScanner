@@ -99,6 +99,26 @@ export class UserDao {
     );
   }
 
+  async userById(userId: number): Promise<UserDto> {
+    return knexnest(
+      this.knex
+        .select([
+          'u.id as _id',
+          'u.first_name as _firstName',
+          'u.last_name as _lastName',
+          'u.email AS _email',
+          'u.is_verified AS _isVerified',
+        ])
+        .from('users as u')
+        .where({ id: userId }),
+    ).then((user: any[]) => {
+      if (user && user.length > 0) {
+        return plainToInstance(UserDto, user.pop());
+      }
+      return null;
+    });
+  }
+
   async getUserByEmailAddress(email: string): Promise<UserDto> {
     return knexnest(
       this.knex

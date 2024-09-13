@@ -3,20 +3,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ZeromqService } from '../zeromq/zeromq.service';
 import { ScanPayloadDto } from './dto/scan.dto';
 import { GithubService } from '../github/github.service';
-import { ZeroMQPayload } from '../zeromq/dto/zeromq.payload';
-import { ZeroMQTopic } from '../../common/enum/zeromq-topic.enum';
+import { UserDto } from '../user/dto/user.dto';
+import { IGithubScan } from '../zeromq/interfaces/github-scan.interface';
+import { ZeromqService } from '../zeromq/zeromq.service';
 
 @Injectable()
 export class ScanService {
   constructor(
-    private readonly zeroMQService: ZeromqService,
     private readonly githubService: GithubService,
+    private readonly zeroMQService: ZeromqService,
   ) {}
 
-  async scan(payload: ScanPayloadDto): Promise<string> {
+  async scan(payload: ScanPayloadDto, user: UserDto): Promise<string> {
     const repository = await this.githubService.repository(payload?.repository);
     if (!repository) {
       throw new NotFoundException(`Repository doesn't exists`);
@@ -35,16 +35,17 @@ export class ScanService {
       throw new NotFoundException(`Branch doesn't exists`);
     }
 
-    const zeromqPayload: ZeroMQPayload = {
+    const githubScanPayload: IGithubScan = {
       sha: branch.commit.sha,
       branch: branch.name,
       repository: payload.repository,
+      user,
     };
 
     try {
-      await this.zeroMQService.publisherMessage(
-        ZeroMQTopic.SCAN,
-        JSON.stringify(zeromqPayload),
+      this.zeroMQService.publishScanQueue(
+        'scan.github-scan',
+        githubScanPayload,
       );
     } catch (e) {
       throw new BadRequestException('Failed to publish message');

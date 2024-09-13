@@ -14,19 +14,22 @@ import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { ChangePasswordDto, PasswordResetDto } from './dto/password-reset.dto';
 import { nanoid } from 'nanoid';
 import { PasswordResetTypeEnum } from 'src/common/enum/password-reset-type.enum';
-import { ZeromqService } from '../zeromq/zeromq.service';
-import { ZeroMQTopic } from '../../common/enum/zeromq-topic.enum';
 import { VerificationTokenDto } from './dto/verification-token.dto';
 import { CacheService } from '../cache/cache.service';
 import { ONE_DAY } from '../../common/utils/constants';
+import { ConfigService } from '@nestjs/config';
+import { ZeromqService } from '../zeromq/zeromq.service';
+import { IPasswordReset } from '../zeromq/interfaces/password-reset.interface';
+import { IVerifyEmail } from '../zeromq/interfaces/verify-email.interface';
 
 @Injectable()
 export class UserService {
   constructor(
     private readonly userDao: UserDao,
     private readonly jwtService: JwtService,
-    private readonly zeromqService: ZeromqService,
     private readonly cacheService: CacheService,
+    private readonly zeroMQService: ZeromqService,
+    private readonly configService: ConfigService,
   ) {}
 
   async createAccount(user: UserCreatePayload): Promise<number> {
@@ -68,6 +71,10 @@ export class UserService {
     return this.jwtService.getToken(jwtTokenDetails);
   }
 
+  async userById(userId: number): Promise<UserDto> {
+    return this.userDao.userById(userId);
+  }
+
   async resetPassword(
     userId: number,
     type: PasswordResetTypeEnum,
@@ -79,9 +86,36 @@ export class UserService {
     try {
       const response = await this.userDao.resetPassword(payload);
       if (response.length > 0) {
-        this.zeromqService
-          .publisherMessage(ZeroMQTopic.EMIAL, JSON.stringify(response.pop()))
-          .catch((error) => console.log(error));
+        const user = await this.userById(response[0].userId);
+        if (user) {
+          if (response[0].type === PasswordResetTypeEnum.RESET_PASSWORD) {
+            const payload: IPasswordReset = {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              resetLink: `${this.configService.get('common.host')}:${this.configService.get('common.port')}/api/v1/user/reset-password`,
+              token: response[0].token,
+            };
+            this.zeroMQService.publisherEmailQueue(
+              'email.password-reset',
+              payload,
+            );
+          } else if (
+            response[0].type === PasswordResetTypeEnum.VERIFY_ACCOUNT
+          ) {
+            const payload: IVerifyEmail = {
+              firstName: user.firstName,
+              lastName: user.lastName,
+              token: response[0].token,
+              email: user.email,
+              verificationLink: `${this.configService.get('common.host')}:${this.configService.get('port')}/api/v1/user/verifyAccount/${response[0].token}`,
+            };
+            this.zeroMQService.publisherEmailQueue(
+              'email.email-verify',
+              payload,
+            );
+          }
+        }
       }
       return response.length > 0;
     } catch (error) {
