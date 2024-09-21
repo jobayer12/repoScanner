@@ -1,7 +1,5 @@
 export interface IGithubScan {
   email: string;
-  resultURL: string;
+  repositoryName: string;
   scanResultLink: string;
-  template: 'github-scan';
-  subject: 'Github Scan Result';
 }

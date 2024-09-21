@@ -7,13 +7,13 @@ import { ScanPayloadDto } from './dto/scan.dto';
 import { GithubService } from '../github/github.service';
 import { UserDto } from '../user/dto/user.dto';
 import { IGithubScan } from '../zeromq/interfaces/github-scan.interface';
-import { ZeromqService } from '../zeromq/zeromq.service';
+import { ZeromqScanService } from '../zeromq/zeromq-scan.service';
 
 @Injectable()
 export class ScanService {
   constructor(
     private readonly githubService: GithubService,
-    private readonly zeroMQService: ZeromqService,
+    private readonly zeromqScanService: ZeromqScanService,
   ) {}
 
   async scan(payload: ScanPayloadDto, user: UserDto): Promise<string> {
@@ -31,7 +31,7 @@ export class ScanService {
       payload.branch,
     );
 
-    if (!repository) {
+    if (!branch) {
       throw new NotFoundException(`Branch doesn't exists`);
     }
 
@@ -39,17 +39,18 @@ export class ScanService {
       sha: branch.commit.sha,
       branch: branch.name,
       repository: payload.repository,
-      user,
+      userId: user.id,
+      email: user.email,
     };
 
     try {
-      this.zeroMQService.publishScanQueue(
+      await this.zeromqScanService.publishScanQueue(
         'scan.github-scan',
         githubScanPayload,
       );
     } catch (e) {
       throw new BadRequestException('Failed to publish message');
     }
-    return 'Repository scan started.';
+    return 'Repository app started.';
   }
 }

@@ -24,6 +24,17 @@ export class MailService {
     }
   }
 
+  @OnEvent('email.github-scan')
+  async sendScanResult<K extends keyof EventPayloads>(
+      payload: EventPayloads[K],
+  ): Promise<void> {
+    try {
+
+    } catch (error) {
+      console.log('error', error);
+    }
+  }
+
   @OnEvent('email.password-reset')
   async passwordReset<K extends keyof EventPayloads>(
     payload: EventPayloads[K],
@@ -41,7 +52,7 @@ export class MailService {
     }
   }
 
-  @OnEvent('scan.github-scan')
+  @OnEvent('app.github-app')
   async scanResult<K extends keyof EventPayloads>(
     payload: EventPayloads[K],
   ): Promise<void> {
@@ -49,7 +60,7 @@ export class MailService {
       const response = await this.mailerService.sendMail({
         to: payload.email,
         subject: `Password Reset`,
-        template: 'github-scan',
+        template: 'github-app',
         context: payload,
       });
       console.log('response', response);

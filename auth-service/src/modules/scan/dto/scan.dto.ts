@@ -22,7 +22,7 @@ export class ScanPayloadDto {
   @ApiProperty({
     name: 'branch',
     description:
-      'Set any specific branch you want to scan otherwise system will scan the default branch.',
+      'Set any specific branch you want to app otherwise system will app the default branch.',
   })
   @IsOptional()
   @IsString()

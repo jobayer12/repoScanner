@@ -66,9 +66,15 @@ export class UserService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials.');
     }
-    const jwtTokenDetails = instanceToPlain(userDetails);
-    delete jwtTokenDetails.password;
-    return this.jwtService.getToken(jwtTokenDetails);
+    const tokenPayload: Record<string, any> = {
+      id: userDetails.id,
+      firstName: userDetails.firstName,
+      lastName: userDetails.lastName,
+      email: userDetails.email,
+      isVerified: userDetails.isVerified,
+    };
+
+    return this.jwtService.getToken(tokenPayload);
   }
 
   async userById(userId: number): Promise<UserDto> {
@@ -96,10 +102,14 @@ export class UserService {
               resetLink: `${this.configService.get('common.host')}:${this.configService.get('common.port')}/api/v1/user/reset-password`,
               token: response[0].token,
             };
-            this.zeroMQService.publisherEmailQueue(
-              'email.password-reset',
-              payload,
-            );
+            try {
+              await this.zeroMQService.publisherEmailQueue(
+                'email.password-reset',
+                payload,
+              );
+            } catch (error) {
+              console.error('Faile to publish email message');
+            }
           } else if (
             response[0].type === PasswordResetTypeEnum.VERIFY_ACCOUNT
           ) {
@@ -110,10 +120,14 @@ export class UserService {
               email: user.email,
               verificationLink: `${this.configService.get('common.host')}:${this.configService.get('port')}/api/v1/user/verifyAccount/${response[0].token}`,
             };
-            this.zeroMQService.publisherEmailQueue(
-              'email.email-verify',
-              payload,
-            );
+            try {
+              await this.zeroMQService.publisherEmailQueue(
+                  'email.email-verify',
+                  payload,
+              );
+            } catch (e) {
+              console.error('Faile to publish email message');
+            }
           }
         }
       }
@@ -179,10 +193,12 @@ export class UserService {
   async getUserByEmailAddress(email: string): Promise<UserDto> {
     const cacheKey = `user_${email.toLowerCase()}`;
     const cacheUserDetails = await this.cacheService.get<UserDto>(cacheKey);
+    console.log('cacheUserDetails: ', cacheUserDetails);
     if (cacheUserDetails) {
       return plainToInstance(UserDto, cacheUserDetails);
     }
     const userDetails = await this.userDao.getUserByEmailAddress(email);
+    console.log('userDetails: ', userDetails);
 
     if (userDetails) {
       this.cacheService

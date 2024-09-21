@@ -14,7 +14,7 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.setupSubscriber();
+    this.setupSubscriber().catch((r) => console.log(r));
   }
 
   private async setupSubscriber<K extends keyof EventPayloads>() {
@@ -27,8 +27,12 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
       const port = this.configService.get('zeromq.port');
       const connectionURL = `tcp://${host}:${port}`;
       this.subscriber.connect(connectionURL);
-      this.subscriber.subscribe('');
+      this.subscriber.subscribe(
+        'email-authService',
+        'scanResult-scannerService',
+      );
       for await (const [topic, msg] of this.subscriber) {
+        console.log('topic', topic.toString(), msg.toString());
         this.emitterService.emit(
           topic.toString() as K,
           JSON.parse(msg.toString()) as EventPayloads[K],
@@ -39,7 +43,5 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  onModuleDestroy() {
-    throw new Error('Method not implemented.');
-  }
+  onModuleDestroy() {}
 }
