@@ -2,6 +2,10 @@ export interface IGithubScan {
   sha: string;
   branch: string;
   repository: string;
-  userId: number;
-  email: string;
+  scanId: string;
+}
+
+export interface IGithubScanResult {
+  scanId: string;
+  result: any;
 }

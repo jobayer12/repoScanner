@@ -5,7 +5,7 @@ import { EmitterService } from '../emitter/emitter.service';
 import { EventPayloads } from '../emitter/interfaces/EventPayloads';
 
 @Injectable()
-export class ZeromqService implements OnModuleInit, OnModuleDestroy {
+export class AuthServiceSubService implements OnModuleInit, OnModuleDestroy {
   private subscriber: zmq.Subscriber;
 
   constructor(
@@ -14,7 +14,7 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    this.setupSubscriber().catch((r) => console.log(r));
+    this.setupSubscriber().catch((error) => console.log(error));
   }
 
   private async setupSubscriber<K extends keyof EventPayloads>() {
@@ -23,16 +23,15 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // Bind the publisher to a TCP address
-      const host = this.configService.get('zeromq.host');
-      const port = this.configService.get('zeromq.port');
-      const connectionURL = `tcp://${host}:${port}`;
+      const url = this.configService.get('zeromq.subURL');
+      const connectionURL = `tcp://${url}`;
       this.subscriber.connect(connectionURL);
       this.subscriber.subscribe(
-        'email-authService',
-        'scanResult-scannerService',
+        'email.github-scan',
+        'email.password-reset',
+        'email.email-verify',
       );
       for await (const [topic, msg] of this.subscriber) {
-        console.log('topic', topic.toString(), msg.toString());
         this.emitterService.emit(
           topic.toString() as K,
           JSON.parse(msg.toString()) as EventPayloads[K],

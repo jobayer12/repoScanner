@@ -1,10 +1,10 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as zmq from 'zeromq';
 import { EmailPayloads } from './interfaces/EventPayloads';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class ZeromqService implements OnModuleInit, OnModuleDestroy {
+export class EmailPubService implements OnModuleInit, OnModuleDestroy {
   private publisher: zmq.Publisher;
 
   constructor(private readonly configService: ConfigService) {}
@@ -19,9 +19,8 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // Bind the publisher to a TCP address
-      const host = this.configService.get('zeromq.host');
-      const port = this.configService.get('zeromq.port');
-      const connectionURL: string = `tcp://${host}:${port}/email-authService`;
+      const url = this.configService.get('zeromq.emailServicePubURL');
+      const connectionURL: string = `tcp://${url}`;
       await this.publisher.bind(connectionURL);
     } catch (error) {
       console.error('Error binding ZeroMQ Publisher:', error);
@@ -29,7 +28,7 @@ export class ZeromqService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Function to publish a message
-  async publisherEmailQueue<K extends keyof EmailPayloads>(
+  async publisherMessage<K extends keyof EmailPayloads>(
     event: K,
     payload: EmailPayloads[K],
   ): Promise<void> {

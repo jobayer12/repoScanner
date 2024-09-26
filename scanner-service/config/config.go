@@ -1,17 +1,14 @@
 package config
 
 import (
-	"github.com/spf13/viper"
 	_ "time"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
-	ZeromqPort string `mapstructure:"ZEROMQ_PORT"`
-	ZeromqHost string `mapstructure:"ZEROMQ_HOST"`
-
-	MongoDBConnectionURI string `mapstructure:"MONGO_CONNECTION_URL"`
-
-	AuthServiceURL string `mapstructure:"AUTH_SERVICE_URL"`
+	ZeromqPublishURL   string `mapstructure:"ZEROMQ_PUBLISH_URL"`
+	ZeromqSubscribeURL string `mapstructure:"ZEROMQ_SUBSCRIBE_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {

@@ -18,7 +18,7 @@ import { VerificationTokenDto } from './dto/verification-token.dto';
 import { CacheService } from '../cache/cache.service';
 import { ONE_DAY } from '../../common/utils/constants';
 import { ConfigService } from '@nestjs/config';
-import { ZeromqService } from '../zeromq/zeromq.service';
+import { EmailPubService } from '../zeromq/emailPub.service';
 import { IPasswordReset } from '../zeromq/interfaces/password-reset.interface';
 import { IVerifyEmail } from '../zeromq/interfaces/verify-email.interface';
 
@@ -28,7 +28,7 @@ export class UserService {
     private readonly userDao: UserDao,
     private readonly jwtService: JwtService,
     private readonly cacheService: CacheService,
-    private readonly zeroMQService: ZeromqService,
+    private readonly zeroMQService: EmailPubService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -103,7 +103,7 @@ export class UserService {
               token: response[0].token,
             };
             try {
-              await this.zeroMQService.publisherEmailQueue(
+              await this.zeroMQService.publisherMessage(
                 'email.password-reset',
                 payload,
               );
@@ -121,9 +121,9 @@ export class UserService {
               verificationLink: `${this.configService.get('common.host')}:${this.configService.get('port')}/api/v1/user/verifyAccount/${response[0].token}`,
             };
             try {
-              await this.zeroMQService.publisherEmailQueue(
-                  'email.email-verify',
-                  payload,
+              await this.zeroMQService.publisherMessage(
+                'email.email-verify',
+                payload,
               );
             } catch (e) {
               console.error('Faile to publish email message');
@@ -193,12 +193,10 @@ export class UserService {
   async getUserByEmailAddress(email: string): Promise<UserDto> {
     const cacheKey = `user_${email.toLowerCase()}`;
     const cacheUserDetails = await this.cacheService.get<UserDto>(cacheKey);
-    console.log('cacheUserDetails: ', cacheUserDetails);
     if (cacheUserDetails) {
       return plainToInstance(UserDto, cacheUserDetails);
     }
     const userDetails = await this.userDao.getUserByEmailAddress(email);
-    console.log('userDetails: ', userDetails);
 
     if (userDetails) {
       this.cacheService

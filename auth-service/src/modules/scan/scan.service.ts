@@ -3,17 +3,20 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ScanPayloadDto } from './dto/scan.dto';
+import { ScanPayloadDto, ScanSaveDto } from './dto/scan.dto';
 import { GithubService } from '../github/github.service';
 import { UserDto } from '../user/dto/user.dto';
 import { IGithubScan } from '../zeromq/interfaces/github-scan.interface';
-import { ZeromqScanService } from '../zeromq/zeromq-scan.service';
+import { ScannerPubService } from '../zeromq/scannerPub.service';
+import { OnEvent } from '@nestjs/event-emitter';
+import { ScanDao } from './scan.dao';
 
 @Injectable()
 export class ScanService {
   constructor(
     private readonly githubService: GithubService,
-    private readonly zeromqScanService: ZeromqScanService,
+    private readonly scannerPubService: ScannerPubService,
+    private readonly scanDao: ScanDao,
   ) {}
 
   async scan(payload: ScanPayloadDto, user: UserDto): Promise<string> {
@@ -35,22 +38,37 @@ export class ScanService {
       throw new NotFoundException(`Branch doesn't exists`);
     }
 
-    const githubScanPayload: IGithubScan = {
-      sha: branch.commit.sha,
-      branch: branch.name,
-      repository: payload.repository,
-      userId: user.id,
-      email: user.email,
-    };
+    const scanSavePayload = new ScanSaveDto();
+    scanSavePayload.userId = user.id;
+    scanSavePayload.branch = payload.branch;
+    scanSavePayload.repository = payload.repository;
+    scanSavePayload.sha = branch.commit.sha;
+    scanSavePayload.status = 'SCAN_STARTED';
 
-    try {
-      await this.zeromqScanService.publishScanQueue(
-        'scan.github-scan',
-        githubScanPayload,
-      );
-    } catch (e) {
-      throw new BadRequestException('Failed to publish message');
+    const scanId = await this.scanDao.save(scanSavePayload);
+    if (scanId) {
+      const githubScanPayload: IGithubScan = {
+        sha: branch.commit.sha,
+        branch: branch.name,
+        repository: payload.repository,
+        scanId,
+      };
+
+      try {
+        await this.scannerPubService.publisherMessage(
+          'scan.github-scan',
+          githubScanPayload,
+        );
+      } catch (e) {
+        throw new BadRequestException('Failed to publish message');
+      }
     }
-    return 'Repository app started.';
+
+    return scanId;
+  }
+
+  @OnEvent('scan.github-scan-result')
+  async saveScanResult(): Promise<string> {
+    return '';
   }
 }

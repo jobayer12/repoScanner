@@ -15,6 +15,8 @@ import { JwtModule } from './modules/jwt/jwt.module';
 import LoggedInUser from './common/providers/loggedInUser';
 import RedisConfig from './config/redis';
 import { CacheModule } from './modules/cache/cache.module';
+import { EmitterModule } from './modules/emitter/emitter.module';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Global()
 @Module({
@@ -38,6 +40,8 @@ import { CacheModule } from './modules/cache/cache.module';
     GithubModule,
     ZeromqModule,
     JwtModule,
+    EventEmitterModule.forRoot(),
+    EmitterModule,
     RouterModule.register(routes),
   ],
   controllers: [],

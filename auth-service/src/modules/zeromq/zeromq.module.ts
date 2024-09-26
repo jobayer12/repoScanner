@@ -1,10 +1,11 @@
 import { Global, Module } from '@nestjs/common';
-import { ZeromqService } from './zeromq.service';
-import { ZeromqScanService } from './zeromq-scan.service';
+import { EmailPubService } from './emailPub.service';
+import {ScannerPubService} from './scannerPub.service';
+import {ScannerSubService} from './scannerSub.service';
 
 @Global()
 @Module({
-  providers: [ZeromqService, ZeromqScanService],
-  exports: [ZeromqService, ZeromqScanService],
+  providers: [EmailPubService, ScannerPubService, ScannerSubService],
+  exports: [EmailPubService, ScannerPubService, ScannerSubService],
 })
 export class ZeromqModule {}

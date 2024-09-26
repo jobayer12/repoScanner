@@ -1,6 +1,6 @@
 import { IPasswordReset } from './password-reset.interface';
 import { IVerifyEmail } from './verify-email.interface';
-import { IGithubScan } from './github-scan.interface';
+import { IGithubScan, IGithubScanResult } from './github-scan.interface';
 
 export interface EmailPayloads {
   'email.password-reset': IPasswordReset;
@@ -9,6 +9,10 @@ export interface EmailPayloads {
 
 export interface ScanPayload {
   'scan.github-scan': IGithubScan;
+}
+
+export interface ScanResultPayload {
+  'scan.github-scan-result': IGithubScanResult;
 }
 
 export type EventPayloads = EmailPayloads & ScanPayload;

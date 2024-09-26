@@ -26,10 +26,10 @@ export class MailService {
 
   @OnEvent('email.github-scan')
   async sendScanResult<K extends keyof EventPayloads>(
-      payload: EventPayloads[K],
+    payload: EventPayloads[K],
   ): Promise<void> {
     try {
-
+      console.log(payload);
     } catch (error) {
       console.log('error', error);
     }
