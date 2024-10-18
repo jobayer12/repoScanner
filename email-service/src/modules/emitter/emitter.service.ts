@@ -10,7 +10,6 @@ export class EmitterService {
     event: K,
     payload: EventPayloads[K],
   ): boolean {
-    console.log('EmitterService', event, payload);
     return this.eventEmitter.emit(event, payload);
   }
 }
