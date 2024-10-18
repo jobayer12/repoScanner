@@ -1,9 +1,8 @@
 package config
 
 import (
-	_ "time"
-
 	"github.com/spf13/viper"
+	_ "time"
 )
 
 type Config struct {

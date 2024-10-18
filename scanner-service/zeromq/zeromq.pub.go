@@ -5,42 +5,61 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/zeromq/goczmq"
+	zmq "github.com/pebbe/zmq4"
 )
 
 type ZPublisher struct {
-	connection *goczmq.Sock
+	connection *zmq.Socket
 }
 
-func NewZeromqPublisher(url string) *ZPublisher {
-	connection, _ := goczmq.NewPub(url)
-	if connection == nil {
-		log.Fatal("Failed to connect zeromq publisher")
+// NewZeromqPublisher creates a new ZeroMQ publisher and binds it to the given URL
+func NewZeromqPublisher(url string) ZPublisher {
+	// Create a new PUB socket
+	publisher, err := zmq.NewSocket(zmq.PUB)
+	if err != nil {
+		panic(err)
+		// log.Fatalf("Failed to create publisher socket: %v", err)
+		// return nil
 	}
 
-	connection.Bind(url)
+	fmt.Println(url)
+	// Bind to the provided URL
+	err = publisher.Bind(fmt.Sprintf("tcp://%s", url))
+	if err != nil {
+		panic(err)
+		// log.Fatalf("Failed to bind publisher to URL: %v", err)
+		// return nil
+	}
 
 	log.Printf("Publisher connected to: %s\n", fmt.Sprintf("tcp://%s", url))
-	return &ZPublisher{connection: connection}
+	return ZPublisher{connection: publisher}
 }
 
-// PublishMessage Function to publish the message
-func (zp *ZPublisher) PublishMessage(topic string, payload interface{}) error {
+// PublishMessage publishes the given payload as a JSON-encoded message
+func (zp ZPublisher) PublishMessage(topic string, payload interface{}) error {
+	// Marshal the payload into JSON
 	message, err := json.Marshal(payload)
 	if err != nil {
-		log.Println("Error marshalling scan request:", err)
-		return err
+		panic(err)
+		// log.Printf("Error marshalling payload: %v", err)
+		// return err
 	}
-	err = zp.connection.SendFrame([]byte(message), 0)
-	fmt.Println("after send message", err)
+
+	// Send the message with the topic as a multipart message
+	_, err = zp.connection.SendMessage(topic, string(message))
 	if err != nil {
-		log.Fatal("Failed to publish")
-		return err
+		panic(err)
+		// log.Printf("Failed to publish message: %v", err)
+		// return err
 	}
 	return nil
 }
 
-// Close Call Destroy only when done with the connection
+// Close terminates the ZeroMQ publisher socket
 func (zp *ZPublisher) Close() {
-	zp.connection.Destroy()
+	err := zp.connection.Close()
+	if err != nil {
+		return
+	}
+	log.Println("Publisher connection closed")
 }

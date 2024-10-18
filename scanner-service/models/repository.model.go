@@ -5,4 +5,5 @@ type Repository struct {
 	Branch     string `json:"branch"`
 	Repository string `json:"repository"`
 	ScanId     string `json:"scanId"`
+	UserId     int    `json:"userId"`
 }
