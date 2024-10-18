@@ -1,10 +1,15 @@
 import { IPasswordReset } from './password-reset.interface';
 import { IVerifyEmail } from './verify-email.interface';
-import { IGithubScan, IGithubScanResult } from './github-scan.interface';
+import {
+  IEmailGithubScan,
+  IGithubScan,
+  IGithubScanResult,
+} from './github-scan.interface';
 
 export interface EmailPayloads {
   'email.password-reset': IPasswordReset;
   'email.email-verify': IVerifyEmail;
+  'email.github-scan': IEmailGithubScan;
 }
 
 export interface ScanPayload {

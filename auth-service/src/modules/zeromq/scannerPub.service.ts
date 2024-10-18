@@ -16,7 +16,6 @@ export class ScannerPubService implements OnModuleInit, OnModuleDestroy {
   private async setupPublisher() {
     // Create a ZeroMQ publisher socket
     this.publisher = new zmq.Publisher();
-
     try {
       // Bind the publisher to a TCP address
       const url = this.configService.get('zeromq.scanServicePubURL');

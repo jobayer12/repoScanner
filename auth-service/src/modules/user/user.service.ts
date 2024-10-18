@@ -28,7 +28,7 @@ export class UserService {
     private readonly userDao: UserDao,
     private readonly jwtService: JwtService,
     private readonly cacheService: CacheService,
-    private readonly zeroMQService: EmailPubService,
+    private readonly emailPubService: EmailPubService,
     private readonly configService: ConfigService,
   ) {}
 
@@ -103,7 +103,7 @@ export class UserService {
               token: response[0].token,
             };
             try {
-              await this.zeroMQService.publisherMessage(
+              await this.emailPubService.publishMessage(
                 'email.password-reset',
                 payload,
               );
@@ -121,7 +121,7 @@ export class UserService {
               verificationLink: `${this.configService.get('common.host')}:${this.configService.get('port')}/api/v1/user/verifyAccount/${response[0].token}`,
             };
             try {
-              await this.zeroMQService.publisherMessage(
+              await this.emailPubService.publishMessage(
                 'email.email-verify',
                 payload,
               );

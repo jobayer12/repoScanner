@@ -28,7 +28,7 @@ export class EmailPubService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Function to publish a message
-  async publisherMessage<K extends keyof EmailPayloads>(
+  async publishMessage<K extends keyof EmailPayloads>(
     event: K,
     payload: EmailPayloads[K],
   ): Promise<void> {

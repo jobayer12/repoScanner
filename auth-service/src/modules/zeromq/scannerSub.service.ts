@@ -20,15 +20,13 @@ export class ScannerSubService implements OnModuleInit, OnModuleDestroy {
   private async setupSubscriber<K extends keyof ScanResultPayload>() {
     // Create a ZeroMQ publisher socket
     this.subscriber = new zmq.Subscriber();
-
     try {
       // Bind the publisher to a TCP address
       const url = this.configService.get('zeromq.scanServiceSubURL');
       const connectionURL = `tcp://${url}`;
-      await this.subscriber.bind(connectionURL);
+      this.subscriber.connect(connectionURL);
       this.subscriber.subscribe('');
       for await (const [topic, msg] of this.subscriber) {
-        console.log('msg', msg);
         this.emitterService.emit(
           topic.toString() as K,
           JSON.parse(msg.toString()) as ScanResultPayload[K],
