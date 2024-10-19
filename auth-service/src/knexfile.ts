@@ -1,16 +1,11 @@
 const knex = {
   client: 'pg',
   connection: {
-    // host: process.env.DB_HOST,
-    // port: +process.env.DB_PORT,
-    // database: process.env.DB_NAME,
-    // user: process.env.DB_USERNAME,
-    // password: process.env.DB_PASSWORD,
-    host: 'localhost',
-    port: +5432,
-    database: 'reposcanner',
-    user: 'reposcanner',
-    password: 'reposcanner',
+    host: process.env.DB_HOST,
+    port: +process.env.DB_PORT,
+    database: process.env.DB_NAME,
+    user: process.env.DB_USERNAME,
+    password: process.env.DB_PASSWORD,
   },
   pool: {
     min: 10,
