@@ -16,9 +16,7 @@ export default registerAs('database', () => ({
   },
   acquireConnectionTimeout: 20000,
   migrations: {
-    directory: './migrations',
-  },
-  seeds: {
-    directory: './seeds',
+    directory: __dirname + '/../migrations',
+    loadExtensions: ['.js'],
   },
 }));
