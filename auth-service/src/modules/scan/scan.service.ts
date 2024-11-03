@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -79,7 +81,11 @@ export class ScanService {
   }
 
   async scanById(id: string, session: UserDto): Promise<ScanResponseDto> {
-    return this.scanDao.scanById(session.id, id);
+    const response = await this.scanDao.scanById(session.id, id);
+    if (!response) {
+      throw new NotFoundException('Invalid scanId');
+    }
+    return response;
   }
 
   @OnEvent('scan.github-scan-result')

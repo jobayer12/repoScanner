@@ -13,7 +13,7 @@ import * as bcrypt from 'bcryptjs';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { ChangePasswordDto, PasswordResetDto } from './dto/password-reset.dto';
 import { nanoid } from 'nanoid';
-import { PasswordResetTypeEnum } from 'src/common/enum/password-reset-type.enum';
+import { PasswordResetTypeEnum } from '../../common/enum/password-reset-type.enum';
 import { VerificationTokenDto } from './dto/verification-token.dto';
 import { CacheService } from '../cache/cache.service';
 import { ONE_DAY } from '../../common/utils/constants';
@@ -50,6 +50,7 @@ export class UserService {
   }
 
   async login(user: UserLoginPayload): Promise<string> {
+    console.log('user: ', user);
     const userDetails = await this.getUserByEmailAddress(user.email);
     if (!userDetails) {
       throw new UnauthorizedException('Invalid credentials');

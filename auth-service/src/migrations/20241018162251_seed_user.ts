@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 import * as bcrypt from 'bcryptjs';
 
-const payload: Record<string, string | boolean> = {
+export const payload: Record<string, string | boolean> = {
   first_name: 'John',
   last_name: 'Doe',
   email: 'john.doe@example.com',
