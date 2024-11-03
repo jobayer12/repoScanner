@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -74,20 +75,23 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <div class="header">
-            <img class="logo" src="https://example.com/logo.png" alt="Logo">
-        </div>
         <div class="content">
-            <h2>Your GitHub Repository Scan is Complete</h2>
-            <p>We have completed scanning your public GitHub repository: <strong>{{repositoryName}}</strong>.</p>
+            {{#if isScanDone}}
+            <h2>Your GitHub repository scan is completed</h2>
             <p>Click the button below to view the detailed scan results.</p>
             <a href="{{scanResultLink}}" class="button">View Scan Results</a>
 
             <!-- Additional Instructions -->
-            <p style="margin: 0;">If the button above doesn't work, copy and paste the following link in your browser:</p>
+            <p style="margin: 0;">If the button above doesn't work, copy and paste the following link in your browser:
+            </p>
             <p style="margin: 0;"><a href="{{scanResultLink}}" target="_blank">{{scanResultLink}}</a></p>
+            {{/if}}
+            {{#if isScanDone}}
+            <h2>Your GitHub repository scan is failed</h2>
+            {{/if}}
         </div>
         <div class="footer">
             <p>Best,<br>The Development Team</p>
@@ -95,4 +99,5 @@
         </div>
     </div>
 </body>
+
 </html>

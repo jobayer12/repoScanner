@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from './jwt.service';
-import { JwtService as TokenService } from '@nestjs/jwt';
+import { EmitterService } from './emitter.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
-describe('JwtService', () => {
-  let service: JwtService;
+describe('EmitterService', () => {
+  let service: EmitterService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        JwtService,
+        EmitterService,
         {
-          provide: TokenService,
+          provide: EventEmitter2,
           useValue: {
             get: jest.fn,
           },
@@ -18,7 +18,7 @@ describe('JwtService', () => {
       ],
     }).compile();
 
-    service = module.get<JwtService>(JwtService);
+    service = module.get<EmitterService>(EmitterService);
   });
 
   it('should be defined', () => {

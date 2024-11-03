@@ -8,8 +8,14 @@ import { ConfigService } from '@nestjs/config';
   providers: [
     {
       provide: KNEX_CONNECTION,
-      useFactory: (configService: ConfigService) => {
-        return Knex(configService.get('database'));
+      useFactory: async (configService: ConfigService) => {
+        const knex = Knex(configService.get('database'));
+        try {
+          await knex.migrate.latest();
+        } catch (error) {
+          console.log('Failed to run migration due to', error);
+        }
+        return knex;
       },
       inject: [ConfigService],
     },

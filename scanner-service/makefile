@@ -3,6 +3,3 @@ build:
 
 run:
 	go run cmd/scanner/main.go
-
-swag:
-	swag init --parseDependency -g cmd/scanner/main.go

@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from './jwt.service';
-import { JwtService as TokenService } from '@nestjs/jwt';
+import { EmailPubService } from './emailPub.service';
+import { ConfigService } from '@nestjs/config';
 
-describe('JwtService', () => {
-  let service: JwtService;
+describe('EmailPubService', () => {
+  let service: EmailPubService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        JwtService,
+        EmailPubService,
         {
-          provide: TokenService,
+          provide: ConfigService,
           useValue: {
             get: jest.fn,
           },
@@ -18,7 +18,7 @@ describe('JwtService', () => {
       ],
     }).compile();
 
-    service = module.get<JwtService>(JwtService);
+    service = module.get<EmailPubService>(EmailPubService);
   });
 
   it('should be defined', () => {

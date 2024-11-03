@@ -29,7 +29,6 @@ async function bootstrap() {
 
   app.useGlobalFilters(new HttpExceptionFilter());
   const configService: ConfigService = app.get(ConfigService);
-  // app.useGlobalGuards(new AuthGuard());
   await app.listen(configService.get('common.port'));
 }
-bootstrap();
+bootstrap().catch((r) => console.log(r));

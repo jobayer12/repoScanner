@@ -1,6 +1,7 @@
 import { registerAs } from '@nestjs/config';
 
 export default registerAs('zeromq', () => ({
-  host: process.env.ZEROMQ_HOST || 'localhost',
-  port: process.env.ZEROMQ_PORT || 9812,
+  scanServicePubURL: process.env.ZEROMQ_SCAN_SERVICE_PUB_URL,
+  scanServiceSubURL: process.env.ZEROMQ_SCAN_SERVICE_SUB_URL,
+  emailServicePubURL: process.env.ZEROMQ_EMAIL_SERVICE_PUB_URL,
 }));

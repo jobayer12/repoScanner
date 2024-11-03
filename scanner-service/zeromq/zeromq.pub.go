@@ -5,60 +5,61 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jobayer12/repoScanner/RepoScannerService/config"
-	"github.com/jobayer12/repoScanner/RepoScannerService/models"
-	"github.com/jobayer12/repoScanner/RepoScannerService/services"
-	"github.com/zeromq/goczmq"
+	zmq "github.com/pebbe/zmq4"
 )
 
 type ZPublisher struct {
-	scanService services.ScanService
-	connection  *goczmq.Sock
+	connection *zmq.Socket
 }
 
-func NewZeromqPublisher(scanService services.ScanService, route string) *ZPublisher {
-	loadConfig, err := config.LoadConfig(".")
+// NewZeromqPublisher creates a new ZeroMQ publisher and binds it to the given URL
+func NewZeromqPublisher(url string) ZPublisher {
+	// Create a new PUB socket
+	publisher, err := zmq.NewSocket(zmq.PUB)
 	if err != nil {
-		log.Fatal("Could not load environment variables", err)
+		panic(err)
+		// log.Fatalf("Failed to create publisher socket: %v", err)
+		// return nil
 	}
 
-	connection, _ := goczmq.NewPub(fmt.Sprintf("tcp://%s:%s/%s", loadConfig.ZeromqHost, loadConfig.ZeromqPort, route))
-	if connection == nil {
-		log.Fatal(fmt.Sprintf("Failed to connect zeromq '%s' publisher", route))
+	fmt.Println(url)
+	// Bind to the provided URL
+	err = publisher.Bind(fmt.Sprintf("tcp://%s", url))
+	if err != nil {
+		panic(err)
+		// log.Fatalf("Failed to bind publisher to URL: %v", err)
+		// return nil
 	}
 
-	log.Printf("Publisher connected to: %s\n", fmt.Sprintf("tcp://%s:%s/%s", loadConfig.ZeromqHost, loadConfig.ZeromqPort, route))
-	return &ZPublisher{scanService: scanService, connection: connection}
+	log.Printf("Publisher connected to: %s\n", fmt.Sprintf("tcp://%s", url))
+	return ZPublisher{connection: publisher}
 }
 
-// PublishMessage Function to publish the message
-func (zp *ZPublisher) PublishMessage(objectId, email, repo string) error {
-	fmt.Println("objectId", objectId)
-	fmt.Println("email", email)
-	fmt.Println("repo", repo)
-	defer zp.connection.Destroy()
-	loadConfig, err := config.LoadConfig(".")
-	if err != nil {
-		log.Fatal("Could not load environment variables", err)
-	}
-	payload := models.ScanResultPayload{
-		EmailGitHubScan: models.ScanResult{
-			Email:          email,
-			RepositoryName: repo,
-			ScanResultLink: fmt.Sprintf("%s/api/v1/scan/%s", loadConfig.AuthServiceURL, objectId),
-		},
-	}
-	fmt.Println(payload)
+// PublishMessage publishes the given payload as a JSON-encoded message
+func (zp ZPublisher) PublishMessage(topic string, payload interface{}) error {
+	// Marshal the payload into JSON
 	message, err := json.Marshal(payload)
-	fmt.Println("after marshal", message)
 	if err != nil {
-		log.Println("Error marshalling scan request:", err)
-		return err
+		panic(err)
+		// log.Printf("Error marshalling payload: %v", err)
+		// return err
 	}
-	err = zp.connection.SendFrame(message, goczmq.FlagNone)
+
+	// Send the message with the topic as a multipart message
+	_, err = zp.connection.SendMessage(topic, string(message))
 	if err != nil {
-		log.Fatal("Failed to publish")
-		return err
+		panic(err)
+		// log.Printf("Failed to publish message: %v", err)
+		// return err
 	}
 	return nil
+}
+
+// Close terminates the ZeroMQ publisher socket
+func (zp *ZPublisher) Close() {
+	err := zp.connection.Close()
+	if err != nil {
+		return
+	}
+	log.Println("Publisher connection closed")
 }

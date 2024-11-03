@@ -8,65 +8,75 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
-	"time"
 
-	"github.com/jobayer12/repoScanner/RepoScannerService/config"
 	"github.com/jobayer12/repoScanner/RepoScannerService/models"
-	"github.com/jobayer12/repoScanner/RepoScannerService/services"
-	"github.com/zeromq/goczmq"
+	zmq "github.com/pebbe/zmq4"
 )
 
 type ZSubscriber struct {
-	scanService services.ScanService
-	connection  *goczmq.Sock
-	zPublisher  *ZPublisher
+	connection *zmq.Socket
+	zPublisher ZPublisher
 }
 
-func NewZeromqSubscriber(scanService services.ScanService, zPublisher *ZPublisher, route string) *ZSubscriber {
-	loadConfig, err := config.LoadConfig(".")
+// NewZeromqSubscriber creates a new ZeroMQ subscriber and connects it to the given URL
+func NewZeromqSubscriber(zPublisher ZPublisher, url, route string) *ZSubscriber {
+	// Create a SUB socket
+	connection, err := zmq.NewSocket(zmq.SUB)
 	if err != nil {
-		log.Fatal("Could not load environment variables", err)
-	}
-	connection, _ := goczmq.NewSub(fmt.Sprintf("tcp://%s:%s", loadConfig.ZeromqHost, loadConfig.ZeromqPort), route)
-	if connection == nil {
-		log.Fatal(fmt.Sprintf("Failed to connect zeromq '%s' subscriber", route))
+		log.Fatalf("Failed to create subscriber socket: %v", err)
+		return nil
 	}
 
-	log.Printf("Subscriber connected to: %s\n", fmt.Sprintf("tcp://%s:%s/%s", loadConfig.ZeromqHost, loadConfig.ZeromqPort, route))
-	return &ZSubscriber{scanService: scanService, connection: connection, zPublisher: zPublisher}
+	// Connect to the given URL
+	formattedURL := fmt.Sprintf("tcp://%s", url)
+	err = connection.Connect(formattedURL)
+	if err != nil {
+		log.Fatalf("Failed to connect subscriber to %s: %v", formattedURL, err)
+		return nil
+	}
+
+	// Subscribe to the specified route
+	err = connection.SetSubscribe(route)
+	if err != nil {
+		log.Fatalf("Failed to subscribe to route '%s': %v", route, err)
+	}
+
+	log.Printf("Subscriber connected to: tcp://%s/%s\n", url, route)
+	return &ZSubscriber{connection: connection, zPublisher: zPublisher}
 }
 
-// StartSubscriber Function to start the subscriber and listen for messages
+// StartSubscriber starts the subscriber and listens for incoming messages
 func (zs *ZSubscriber) StartSubscriber() {
-
-	defer zs.connection.Destroy()
+	defer zs.connection.Close()
 
 	for {
-		// Receive a message from the publisher
-		msg, err := zs.connection.RecvMessage()
-		fmt.Printf(string(msg[1]))
+		// Receive a multipart message from the publisher
+		msg, err := zs.connection.RecvMessage(0)
 		if err != nil {
 			log.Printf("Failed to receive message: %v", err)
 			continue
 		}
 
-		// Check if the message has at least one frame
+		fmt.Printf("Received message [%s]\n", msg)
+		// Check if the message has at least two parts (topic and payload)
 		if len(msg) < 2 {
 			log.Printf("Received incomplete message: %v", msg)
 			continue
 		}
 
 		// Convert and trim the message frame
-		jsonData := strings.TrimSpace(string(msg[1]))
+		jsonData := strings.TrimSpace(msg[1])
 
 		// Parse the JSON object into the Message struct
 		var parsedMessage models.Repository
+		status := "SCAN_DONE"
 		err = json.Unmarshal([]byte(jsonData), &parsedMessage)
 		if err != nil {
 			log.Printf("Error parsing JSON: %v\nRaw JSON: %s\n", err, jsonData)
 			continue
 		}
 		log.Printf("Start scanning")
+
 		// Define the Docker Trivy command with the JSON format output
 		cmd := exec.Command("trivy", "repo", parsedMessage.Repository, "--format", "json", "--branch", parsedMessage.Branch)
 
@@ -75,68 +85,43 @@ func (zs *ZSubscriber) StartSubscriber() {
 		var stderr bytes.Buffer
 		cmd.Stdout = &out
 		cmd.Stderr = &stderr
-		var createScan *models.CreateScanRequest
-		var updateScan *models.UpdateScanResult
-		createScan = &models.CreateScanRequest{
-			UserId:     parsedMessage.UserId,
-			Repository: parsedMessage.Repository,
-			Branch:     parsedMessage.Branch,
-			Sha:        parsedMessage.Sha,
-		}
-
-		createScanResponse, err := zs.scanService.CreateScan(createScan)
-		if err != nil {
-			log.Fatal("Failed to create scan in mongodb")
-			return
-		}
 
 		// Run the command
 		err = cmd.Run()
 		if err != nil {
 			fmt.Printf("Error running Trivy scan: %v\n", err)
-			fmt.Printf("Stderr: %v\n", stderr.String())
-			updateScan = &models.UpdateScanResult{
-				Status:    "SCAN_FAILED",
-				Result:    nil,
-				UpdatedAt: time.Now(),
-			}
-			_, err := zs.scanService.UpdateScan(createScanResponse.Id.Hex(), updateScan)
 			if err != nil {
 				log.Fatal(err.Error())
 			}
-			return
 		}
 
+		// Extract the JSON part of the output using a regular expression
 		re := regexp.MustCompile(`(?s)(\{.*\}|$begin:math:display$.*$end:math:display$)`)
 		jsonPart := re.FindString(out.String())
 
 		if jsonPart == "" {
 			log.Fatal("No valid JSON found in the Trivy output")
-			return
 		}
 
 		// Parse the extracted JSON part
 		var scanResult interface{}
 		err = json.Unmarshal([]byte(jsonPart), &scanResult)
 		if err != nil {
+			status = "SCAN_FAILED"
+			scanResult = nil
 			log.Fatalf("Failed to parse JSON: %v", err)
-			return
-		}
-
-		updateScan = &models.UpdateScanResult{
-			Status:    "SCAN_DONE",
-			Result:    scanResult,
-			UpdatedAt: time.Now(),
 		}
 
 		log.Println("Scan Done")
-
-		_, err = zs.scanService.UpdateScan(createScanResponse.Id.Hex(), updateScan)
-		if err != nil {
-			log.Fatal(err.Error())
+		publishMessagePayload := models.ScanResult{
+			Result: scanResult,
+			ScanId: parsedMessage.ScanId,
+			UserId: parsedMessage.UserId,
+			Status: status,
 		}
 
-		if err := zs.zPublisher.PublishMessage(createScanResponse.Id.Hex(), parsedMessage.Email, parsedMessage.Repository); err != nil {
+		// Publish the scan result
+		if err := zs.zPublisher.PublishMessage("scan.github-scan-result", publishMessagePayload); err != nil {
 			log.Fatal(err.Error())
 		}
 	}

@@ -1,12 +1,21 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GithubService } from './github.service';
+import { HttpService } from '@nestjs/axios';
 
 describe('GithubService', () => {
   let service: GithubService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [GithubService],
+      providers: [
+        GithubService,
+        {
+          provide: HttpService,
+          useValue: {
+            get: jest.fn,
+          },
+        },
+      ],
     }).compile();
 
     service = module.get<GithubService>(GithubService);
