@@ -6,9 +6,10 @@
 - [Prerequisites](#prerequisites)
 - [Microservices Overview](#microservices-overview)
 - [Setup Instructions](#setup-instructions)
-  - [Auth Service](#1-auth-service)
-  - [Scan Service](#2-scan-service)
-  - [Email Service](#3-email-service)
+  - [Clone the Repository](#1-clone-the-repository)
+  - [Auth Service](#2-auth-service)
+  - [Scan Service](#3-scan-service)
+  - [Email Service](#4-email-service)
 - [Usage](#usage)
 - [Contributing](#contributing)
 
@@ -27,7 +28,14 @@ Before setting up the project, ensure the following are installed on your local 
 
 ## Setup Instructions
 
-### 1. Auth Service
+### 1. Clone the Repository
+To get started, clone the repoScanner repository to your local machine:
+  ```bash
+  git clone https://github.com/jobayer12/repoScanner.git
+  cd repoScanner
+  ```
+
+### 2. Auth Service
 
 The Auth Service handles user registration, login, and JWT authentication.
 
@@ -51,7 +59,7 @@ The Auth Service handles user registration, login, and JWT authentication.
    npm run start
    ```
 
-### 2. Scan Service
+### 3. Scan Service
 
 The Scan Service performs repository scans using Trivy and interacts with other services via ZeroMQ.
 
@@ -77,7 +85,7 @@ The Scan Service performs repository scans using Trivy and interacts with other 
     make run
     ```
 
-### 3. Email Service
+### 4. Email Service
 The Email Service handles email notifications, alerting users based on scan results.
 
 #### Steps to Set Up
