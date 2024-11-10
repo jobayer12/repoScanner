@@ -1,6 +1,7 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotAcceptableException,
   NotFoundException,
@@ -18,9 +19,9 @@ import { VerificationTokenDto } from './dto/verification-token.dto';
 import { CacheService } from '../cache/cache.service';
 import { ONE_DAY } from '../../common/utils/constants';
 import { ConfigService } from '@nestjs/config';
-import { EmailPubService } from '../zeromq/emailPub.service';
-import { IPasswordReset } from '../zeromq/interfaces/password-reset.interface';
-import { IVerifyEmail } from '../zeromq/interfaces/verify-email.interface';
+import { ClientProxy } from '@nestjs/microservices';
+import { IPasswordReset, IVerifyEmail } from './interface/user.interface';
+import { lastValueFrom } from 'rxjs';
 
 @Injectable()
 export class UserService {
@@ -28,7 +29,7 @@ export class UserService {
     private readonly userDao: UserDao,
     private readonly jwtService: JwtService,
     private readonly cacheService: CacheService,
-    private readonly emailPubService: EmailPubService,
+    @Inject('RMQ_EMAIL_SERVICE') private readonly rabbitMQClient: ClientProxy,
     private readonly configService: ConfigService,
   ) {}
 
@@ -50,7 +51,6 @@ export class UserService {
   }
 
   async login(user: UserLoginPayload): Promise<string> {
-    console.log('user: ', user);
     const userDetails = await this.getUserByEmailAddress(user.email);
     if (!userDetails) {
       throw new UnauthorizedException('Invalid credentials');
@@ -96,7 +96,7 @@ export class UserService {
         const user = await this.userById(response[0].userId);
         if (user) {
           if (response[0].type === PasswordResetTypeEnum.RESET_PASSWORD) {
-            const payload: IPasswordReset = {
+            const passwordReset: IPasswordReset = {
               firstName: user.firstName,
               lastName: user.lastName,
               email: user.email,
@@ -104,17 +104,19 @@ export class UserService {
               token: response[0].token,
             };
             try {
-              await this.emailPubService.publishMessage(
-                'email.password-reset',
-                payload,
+              await lastValueFrom(
+                this.rabbitMQClient.emit(
+                  'repo.email.password-reset',
+                  passwordReset,
+                ),
               );
             } catch (error) {
-              console.error('Faile to publish email message');
+              console.log(error);
             }
           } else if (
             response[0].type === PasswordResetTypeEnum.VERIFY_ACCOUNT
           ) {
-            const payload: IVerifyEmail = {
+            const verifyPayload: IVerifyEmail = {
               firstName: user.firstName,
               lastName: user.lastName,
               token: response[0].token,
@@ -122,12 +124,14 @@ export class UserService {
               verificationLink: `${this.configService.get('common.host')}:${this.configService.get('port')}/api/v1/user/verifyAccount/${response[0].token}`,
             };
             try {
-              await this.emailPubService.publishMessage(
-                'email.email-verify',
-                payload,
+              await lastValueFrom(
+                this.rabbitMQClient.emit(
+                  'repo.email.verify-email',
+                  verifyPayload,
+                ),
               );
-            } catch (e) {
-              console.error('Faile to publish email message');
+            } catch (error) {
+              console.log('error: ', error);
             }
           }
         }

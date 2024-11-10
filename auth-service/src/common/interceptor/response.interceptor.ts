@@ -15,7 +15,6 @@ export class ResponseInterceptor implements NestInterceptor {
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(
       map((responseData) => {
-        console.log('responseData');
         return {
           message: '',
           result: responseData ?? null,

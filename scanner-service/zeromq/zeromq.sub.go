@@ -47,7 +47,12 @@ func NewZeromqSubscriber(zPublisher ZPublisher, url, route string) *ZSubscriber 
 
 // StartSubscriber starts the subscriber and listens for incoming messages
 func (zs *ZSubscriber) StartSubscriber() {
-	defer zs.connection.Close()
+	defer func(connection *zmq.Socket) {
+		err := connection.Close()
+		if err != nil {
+			log.Fatal("ZeroMQ Connection Close")
+		}
+	}(zs.connection)
 
 	for {
 		// Receive a multipart message from the publisher
