@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	ZeromqPublishURL   string `mapstructure:"ZEROMQ_PUBLISH_URL"`
-	ZeromqSubscribeURL string `mapstructure:"ZEROMQ_SUBSCRIBE_URL"`
+	ZeromqPublishURL     string `mapstructure:"ZEROMQ_PUBLISH_URL"`
+	ZeromqSubscribeURL   string `mapstructure:"ZEROMQ_SUBSCRIBE_URL"`
+	MongoDBConnectionURI string `mapstructure:"MONGO_CONNECTION_URL"`
 }
 
 func LoadConfig(path string) (config Config, err error) {
@@ -24,7 +25,7 @@ func LoadConfig(path string) (config Config, err error) {
 	if err := viper.ReadInConfig(); err == nil {
 		log.Println("Using .env file for configuration")
 	} else {
-		log.Println("No .env file found, relying on environment variables")
+		log.Fatal("No .env file found, relying on environment variables")
 	}
 
 	// Unmarshal the config from environment variables
