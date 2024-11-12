@@ -42,6 +42,7 @@ export class ScanService {
         branch: branch.name,
         repository: payload.repository,
         userId: user.id,
+        email: user.email,
       };
       this.rabbitMQClient.emit('repo.scan.github', githubScanPayload);
       return 'Github repository Queued';

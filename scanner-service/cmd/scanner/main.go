@@ -2,16 +2,15 @@ package main
 
 import (
 	"context"
+	"github.com/jobayer12/repoScanner/RepoScannerService/config"
+	"github.com/jobayer12/repoScanner/RepoScannerService/internal"
+	"github.com/jobayer12/repoScanner/RepoScannerService/logger"
 	services "github.com/jobayer12/repoScanner/RepoScannerService/services/scan"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"log"
 	"log/slog"
-
-	"github.com/jobayer12/repoScanner/RepoScannerService/config"
-	"github.com/jobayer12/repoScanner/RepoScannerService/logger"
-	"github.com/jobayer12/repoScanner/RepoScannerService/zeromq"
 )
 
 var (
@@ -52,10 +51,36 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to load environment variables", err)
 	}
-	// Create ZeroMQ publisher socket
-	zeroPublisher := zeromq.NewZeromqPublisher(loadConfig.ZeromqPublishURL)
-	//Create ZeroMQ subscriber socket
-	ZeroSubscriber := zeromq.NewZeromqSubscriber(zeroPublisher, loadConfig.ZeromqSubscribeURL, "scan.github-scan")
-	ZeroSubscriber.StartSubscriber()
+	// Connect to RabbitMQ
+	conn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
 
+	client, err := internal.NewRabbitMQClient(conn)
+	if err != nil {
+		panic(err)
+	}
+	defer client.Close()
+
+	// Set up publisher
+	publishConn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
+	if err != nil {
+		panic(err)
+	}
+	defer publishConn.Close()
+
+	publishClient, err := internal.NewRabbitMQClient(publishConn)
+	if err != nil {
+		panic(err)
+	}
+	defer publishClient.Close()
+
+	// Set up a context with cancel for cleanup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	rabbitmq := internal.NewRabbitMQConsumer(client, publishClient, scanService, ctx)
+	// Start consuming messages
+	rabbitmq.StartConsumer(loadConfig.ScanQueueName, "scanner-service", "reposcanner", "repo.email.github-scan")
 }
