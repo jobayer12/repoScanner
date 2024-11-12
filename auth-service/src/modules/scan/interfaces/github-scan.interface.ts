@@ -3,4 +3,5 @@ export interface IGithubScan {
   branch: string;
   repository: string;
   userId: number;
+  email: string;
 }
