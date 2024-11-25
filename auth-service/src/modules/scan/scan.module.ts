@@ -24,6 +24,20 @@ import { ConfigService } from '@nestjs/config';
           },
         }),
       },
+      {
+        name: 'RMQ_RPC',
+        inject: [ConfigService],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [configService.get<string>('rabbitmq.url')],
+            queue: configService.get<string>('rabbitmq.rpcQueue'),
+            queueOptions: {
+              durable: true,
+            },
+          },
+        }),
+      },
     ]),
   ],
 })

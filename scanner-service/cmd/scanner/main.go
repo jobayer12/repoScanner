@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"log"
+	"log/slog"
+
 	"github.com/jobayer12/repoScanner/RepoScannerService/config"
 	"github.com/jobayer12/repoScanner/RepoScannerService/internal"
 	"github.com/jobayer12/repoScanner/RepoScannerService/logger"
@@ -9,8 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"log"
-	"log/slog"
 )
 
 var (
@@ -47,6 +48,11 @@ func init() {
 }
 
 func main() {
+
+	// Set up a context with cancel for cleanup
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	loadConfig, err := config.LoadConfig(".")
 	if err != nil {
 		log.Fatal("Failed to load environment variables", err)
@@ -64,6 +70,22 @@ func main() {
 	}
 	defer client.Close()
 
+	// setup rpc
+
+	rpcConn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
+	if err != nil {
+		panic(err)
+	}
+	defer rpcConn.Close()
+
+	rpcClient, err := internal.NewRabbitMQClient(rpcConn)
+
+	defer rpcClient.Close()
+
+	rpcRabbitMQ := internal.NewRabbitMQRPC(rpcClient, scanService, ctx)
+
+	rpcRabbitMQ.StartConsumingRpcRequest(loadConfig.RpcQueueName, "scanner-service")
+
 	// Set up publisher
 	publishConn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
 	if err != nil {
@@ -77,9 +99,6 @@ func main() {
 	}
 	defer publishClient.Close()
 
-	// Set up a context with cancel for cleanup
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	rabbitmq := internal.NewRabbitMQConsumer(client, publishClient, scanService, ctx)
 	// Start consuming messages
 	rabbitmq.StartConsumer(loadConfig.ScanQueueName, "scanner-service", "reposcanner", "repo.email.github-scan")
