@@ -56,9 +56,50 @@ func (s *ScanServiceImpl) UpdateScan(id string, result *models.UpdateScanResult)
 	if err := res.Decode(&updatedPost); err != nil {
 		return nil, errors.New("no scan with that Id exists")
 	}
-
 	return updatedPost, nil
+}
 
+func (s *ScanServiceImpl) Find(filter models.RpcPayload) ([]*models.ScanDBSchema, error) {
+	// Initialize the query object
+	query := bson.M{}
+	// Add `id` to the query if it's available in the payload
+	if filter.ID != "" {
+		obId, err := primitive.ObjectIDFromHex(filter.ID)
+		if err == nil { // Ensure the ID is a valid ObjectID
+			query["_id"] = obId
+		}
+	}
+	// Add `userId` to the query if it's available in the payload
+	if filter.UserID > 0 {
+		query["userId"] = filter.UserID
+	}
+
+	cursor, err := s.scanCollection.Find(s.ctx, query)
+
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(s.ctx)
+	var scans []*models.ScanDBSchema
+	for cursor.Next(s.ctx) {
+		scan := &models.ScanDBSchema{}
+		err := cursor.Decode(scan)
+
+		if err != nil {
+			return nil, err
+		}
+
+		scans = append(scans, scan)
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	if len(scans) == 0 {
+		return []*models.ScanDBSchema{}, nil
+	}
+
+	return scans, nil
 }
 
 func (s *ScanServiceImpl) FindScanById(id, userId string) (*models.ScanDBSchema, error) {

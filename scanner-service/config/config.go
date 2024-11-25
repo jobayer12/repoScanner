@@ -1,14 +1,16 @@
 package config
 
 import (
-	"github.com/spf13/viper"
 	"log"
+
+	"github.com/spf13/viper"
 )
 
 type Config struct {
 	MongoDBConnectionURI string `mapstructure:"MONGO_CONNECTION_URL"`
 	RabbitMQURL          string `mapstructure:"RABBITMQ_URL"`
 	ScanQueueName        string `mapstructure:"SCAN_QUEUE_NAME"`
+	RpcQueueName         string `mapstructure:"RPC_QUEUE_NAME"`
 	AuthServiceHost      string `mapstructure:"AUTH_SERVICE_HOST"`
 }
 

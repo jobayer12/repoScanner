@@ -6,19 +6,8 @@ import (
 	"github.com/jobayer12/repoScanner/RepoScannerService/models"
 	services "github.com/jobayer12/repoScanner/RepoScannerService/services/scan"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"log"
 )
-
-// ListRequest Request and Response Structures
-type ListRequest struct {
-	Cmd    string `json:"cmd"`
-	UserId string `json:"userId,omitempty"`
-}
-
-type ByIDRequest struct {
-	Cmd    string `json:"cmd"`
-	ID     string `json:"id"`
-	UserId string `json:"userId"`
-}
 
 type RabbitMQRpc struct {
 	client      *RabbitMQClient
@@ -34,57 +23,60 @@ func NewRabbitMQRPC(client *RabbitMQClient, scanService services.ScanService, ct
 	}
 }
 
+func (rpc *RabbitMQRpc) StartConsumingRpcRequest(queue, consumer string) {
+	messages, err := rpc.client.Consume(queue, consumer, false) // Set autoAck to false for manual acknowledgment
+	if err != nil {
+		log.Fatal("Failed to register a consumer:", err)
+	}
+
+	ch, _ := rpc.client.conn.Channel() // Ensure you have access to the RabbitMQ channel
+	if ch == nil {
+		log.Fatal("RabbitMQ channel is not initialized")
+	}
+
+	log.Println("Waiting for RPC requests...")
+	for d := range messages {
+		go func(delivery amqp.Delivery) { // Use a goroutine to process each message
+			go rpc.handleRPCRequest(delivery, ch)
+			_ = delivery.Ack(false) // Acknowledge the message after processing
+		}(d)
+	}
+}
+
 // HandleRPCRequest Handle RPC Requests with enhanced structure
-func (rpc *RabbitMQRpc) HandleRPCRequest(d amqp.Delivery, ch *amqp.Channel) {
-	//ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	//defer cancel()
+func (rpc *RabbitMQRpc) handleRPCRequest(d amqp.Delivery, ch *amqp.Channel) {
 
-	var response models.Response
+	var response models.RpcResponse
 
-	request := ListRequest{}
+	request := models.BaseQueuePayload[models.RpcPayload]{}
 	if err := json.Unmarshal(d.Body, &request); err != nil {
-		response = models.Response{Error: "Invalid request format"}
+		log.Println(err)
+		response = models.RpcResponse{Error: "Invalid request format"}
 		sendResponse(ch, d, response)
 		return
 	}
 
-	switch request.Cmd {
-	//case "getList":
-	//	if request.UserId != "" {
-	//		filter = bson.M{"userId": request.UserId}
-	//	}
-	//	data, err := services.ScanService.ScanListByUserId(request.UserId, 0, 100))
-	//	if err != nil {
-	//		response = Response{Error: "Failed to fetch data"}
-	//	} else {
-	//		response = Response{Data: data}
-	//	}
-
-	case "getById":
-		idReq := ByIDRequest{}
-		err := json.Unmarshal(d.Body, &idReq)
+	switch request.Pattern {
+	case "scanList":
+		// Fetch data based on the constructed query
+		data, err := rpc.scanService.Find(request.Data)
 		if err != nil {
-			return
-		}
-
-		data, err := rpc.scanService.FindScanById(idReq.ID, idReq.UserId)
-		if err != nil {
-			response = models.Response{Error: "Data not found"}
+			response = models.RpcResponse{Error: "Data not found", Data: make([]interface{}, 0)}
 		} else {
-			response = models.Response{Data: data}
+			response = models.RpcResponse{Data: data, Error: ""}
 		}
 
 	default:
-		response = models.Response{Error: "Unknown command"}
+		response = models.RpcResponse{Error: "Unknown command"}
 	}
 
 	sendResponse(ch, d, response)
 }
 
 // Helper function to send the response back to RabbitMQ
-func sendResponse(ch *amqp.Channel, d amqp.Delivery, response models.Response) {
+func sendResponse(ch *amqp.Channel, d amqp.Delivery, response models.RpcResponse) {
 	responseBody, _ := json.Marshal(response)
-	ch.Publish(
+	err := ch.Publish(
 		"",        // exchange
 		d.ReplyTo, // reply queue
 		false,
@@ -95,4 +87,7 @@ func sendResponse(ch *amqp.Channel, d amqp.Delivery, response models.Response) {
 			Body:          responseBody,
 		},
 	)
+	if err != nil {
+		return
+	}
 }

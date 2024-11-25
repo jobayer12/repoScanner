@@ -104,12 +104,10 @@ export class UserService {
               token: response[0].token,
             };
             try {
-              await lastValueFrom(
-                this.rabbitMQClient.emit(
+              await this.rabbitMQClient.emit(
                   'repo.email.password-reset',
                   passwordReset,
-                ),
-              );
+              ).toPromise();
             } catch (error) {
               console.log(error);
             }
@@ -124,12 +122,10 @@ export class UserService {
               verificationLink: `${this.configService.get('common.host')}:${this.configService.get('port')}/api/v1/user/verifyAccount/${response[0].token}`,
             };
             try {
-              await lastValueFrom(
-                this.rabbitMQClient.emit(
+              await this.rabbitMQClient.emit(
                   'repo.email.verify-email',
                   verifyPayload,
-                ),
-              );
+              ).toPromise();
             } catch (error) {
               console.log('error: ', error);
             }

@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/jobayer12/repoScanner/RepoScannerService/config"
-	"github.com/jobayer12/repoScanner/RepoScannerService/models"
-	services "github.com/jobayer12/repoScanner/RepoScannerService/services/scan"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"log"
 	"os/exec"
 	"regexp"
 	"time"
+
+	"github.com/jobayer12/repoScanner/RepoScannerService/config"
+	"github.com/jobayer12/repoScanner/RepoScannerService/models"
+	services "github.com/jobayer12/repoScanner/RepoScannerService/services/scan"
+	amqp "github.com/rabbitmq/amqp091-go"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -61,10 +62,11 @@ func (rmc *RabbitMQConsumer) StartConsumer(queue, consumer, exchange, routingKey
 				}
 
 				// Parse the JSON object into the Message struct
-				var parsedMessage models.RabbitMQScanQueuePayload
+				var parsedMessage models.BaseQueuePayload[models.Repository]
 				err = json.Unmarshal(msg.Body, &parsedMessage)
 				if err != nil {
 					log.Printf("Error parsing JSON: %v\n", err)
+					_ = msg.Nack(false, false)
 					return nil
 				}
 				log.Printf("Start scanning")
@@ -91,6 +93,7 @@ func (rmc *RabbitMQConsumer) StartConsumer(queue, consumer, exchange, routingKey
 				err = cmd.Run()
 
 				if err != nil {
+					_ = msg.Nack(false, false)
 					fmt.Printf("Error running Trivy scan: %v\n", err)
 					fmt.Printf("Stderr: %v\n", stderr.String())
 					updateScan = &models.UpdateScanResult{
@@ -102,6 +105,7 @@ func (rmc *RabbitMQConsumer) StartConsumer(queue, consumer, exchange, routingKey
 					if err != nil {
 						log.Fatalf("Failed to update scan in mongodb %v", err.Error())
 					}
+					return nil
 				}
 
 				// Extract the JSON part of the output using a regular expression
@@ -145,7 +149,7 @@ func (rmc *RabbitMQConsumer) StartConsumer(queue, consumer, exchange, routingKey
 					Status:         "SCAN_DONE",
 				}
 
-				emailQueuePayload := models.EmailQueuePayload{
+				emailQueuePayload := models.BaseQueuePayload[models.EmailQueueData]{
 					Pattern: routingKey,
 					Data:    emailQueueData,
 				}
@@ -163,6 +167,12 @@ func (rmc *RabbitMQConsumer) StartConsumer(queue, consumer, exchange, routingKey
 					CorrelationId: msg.CorrelationId,
 				}); err != nil {
 					panic(err)
+				}
+
+				// Acknowledge the message after successful processing
+				if err := msg.Ack(false); err != nil {
+					log.Printf("Failed to acknowledge message: %v", err)
+					return nil
 				}
 				return nil
 			})

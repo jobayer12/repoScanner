@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   NotFoundException,
@@ -9,12 +11,15 @@ import { GithubService } from '../github/github.service';
 import { UserDto } from '../user/dto/user.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { IGithubScan } from './interfaces/github-scan.interface';
+import { mergeConfigObject } from '@nestjs/config/dist/utils/merge-configs.util';
+import { timeout } from 'rxjs';
 
 @Injectable()
 export class ScanService {
   constructor(
     private readonly githubService: GithubService,
     @Inject('RMQ_SCAN_SERVICE') private readonly rabbitMQClient: ClientProxy,
+    @Inject('RMQ_RPC') private readonly rabbitRpc: ClientProxy,
   ) {}
 
   async scan(payload: ScanPayloadDto, user: UserDto): Promise<string> {
@@ -44,7 +49,9 @@ export class ScanService {
         userId: user.id,
         email: user.email,
       };
-      this.rabbitMQClient.emit('repo.scan.github', githubScanPayload);
+      await this.rabbitMQClient
+        .emit('repo.scan.github', githubScanPayload)
+        .toPromise();
       return 'Github repository Queued';
     } catch (error) {
       throw new BadRequestException('Failed to Queue github repository');
@@ -52,42 +59,22 @@ export class ScanService {
   }
 
   async scanById(id: string, session: UserDto): Promise<ScanResponseDto> {
-    return new ScanResponseDto();
-    // const response = await this.scanDao.scanById(session.id, id);
-    // if (!response) {
-    //   throw new NotFoundException('Invalid scanId');
-    // }
-    // return response;
-  }
+    const payload = {
+      id,
+      userId: session.id,
+    };
 
-  // @OnEvent('scan.github-scan-result')
-  // async saveScanResult(data: IGithubScanResult): Promise<boolean> {
-  //   const payload = new ScanResultDto();
-  //   payload.status = data.status;
-  //   payload.result = data.result;
-  //   try {
-  //     const scanDetails = await this.scanDao.scanById(
-  //       data.userId,
-  //       data?.scanId,
-  //     );
-  //     if (!scanDetails) return false;
-  //     const isUpdated = await this.scanDao.update(data.scanId, payload);
-  //     if (isUpdated) {
-  //       const user = await this.userService.userById(data.userId);
-  //       if (user) {
-  //         const emailPayloadData: IEmailGithubScan = {
-  //           email: user.email,
-  //           scanResultLink: `${this.configService.get('common.host')}:${this.configService.get('common.port')}/api/v1/scan/${data.scanId}`,
-  //           status: data.status,
-  //         };
-  //         this.emailPubService
-  //           .publishMessage('email.github-scan', emailPayloadData)
-  //           .catch((error) => console.log(error));
-  //       }
-  //     }
-  //     return isUpdated;
-  //   } catch (e) {
-  //     return false;
-  //   }
-  // }
+    try {
+      const response = await this.rabbitRpc
+        .send('scanList', payload)
+        .pipe(timeout(5000))
+        .toPromise();
+      if (response.error) {
+        throw new Error(response.error);
+      }
+      return response;
+    } catch (error) {
+      throw new NotFoundException(error.message ?? 'Failed to load scan details');
+    }
+  }
 }
