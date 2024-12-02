@@ -1,0 +1,71 @@
+{
+  "users": [
+    {
+      "name": "admin",
+      "password": "admin",
+      "tags": "administrator"
+    }
+  ],
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "admin",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "reposcanner",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true
+    }
+  ],
+  "queues": [
+    {
+      "name": "emailQueue",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "scanQueue",
+      "vhost": "/",
+      "durable": true
+    },
+    {
+      "name": "scanRpc",
+      "vhost": "/",
+      "durable": true
+    }
+  ],
+  "bindings": [
+    {
+      "source": "reposcanner",
+      "vhost": "/",
+      "destination": "emailQueue",
+      "destination_type": "queue",
+      "routing_key": "repo.email.*"
+    },
+    {
+      "source": "reposcanner",
+      "vhost": "/",
+      "destination": "scanQueue",
+      "destination_type": "queue",
+      "routing_key": "repo.scan.*"
+    },
+    {
+      "source": "reposcanner",
+      "vhost": "/",
+      "destination": "scanRpc",
+      "destination_type": "queue",
+      "routing_key": "repo.rpc.scan"
+    }
+  ]
+}

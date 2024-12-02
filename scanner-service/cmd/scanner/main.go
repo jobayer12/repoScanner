@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 
@@ -9,37 +10,82 @@ import (
 	"github.com/jobayer12/repoScanner/RepoScannerService/internal"
 	"github.com/jobayer12/repoScanner/RepoScannerService/logger"
 	services "github.com/jobayer12/repoScanner/RepoScannerService/services/scan"
+	_ "github.com/rabbitmq/amqp091-go"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 var (
-	mongoClient    *mongo.Client
-	ctx            context.Context
-	scanService    services.ScanService
-	scanCollection *mongo.Collection
+	mongoClient            *mongo.Client
+	ctx                    context.Context
+	scanService            services.ScanService
+	scanCollection         *mongo.Collection
+	loadConfig             config.Config
+	rabbitmqConsumerClient *internal.RabbitMQClient
+	rabbitMQPublishClient  *internal.RabbitMQClient
+	rabbitmqRPCClient      *internal.RabbitMQClient
 )
 
 func init() {
 	slog.SetDefault(logger.Logger())
-	loadConfig, err := config.LoadConfig(".")
+
+	// Load configuration
+	var err error
+	loadConfig, err = config.LoadConfig(".")
+	fmt.Printf("%+v\n", loadConfig)
 	if err != nil {
 		log.Fatal("Failed to load environment variables", err)
 	}
 
-	ctx = context.TODO()
+	// MongoDB connection
+	setupMongoDB()
 
-	// mongodb connection
-	mongoConn := options.Client().ApplyURI(loadConfig.MongoDBConnectionURI)
-	mongoClient, err := mongo.Connect(ctx, mongoConn)
+	// RabbitMQ connections
+	setupRabbitMQ()
 
+}
+
+func setupRabbitMQ() {
+	var err error
+
+	// Establish a single RabbitMQ connection
+	conn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURI)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to connect to RabbitMQ:", err)
+	}
+
+	// Consumer client using the same connection
+	rabbitmqConsumerClient, err = internal.NewRabbitMQClient(conn)
+	if err != nil {
+		log.Fatal("Failed to create RabbitMQ consumer client:", err)
+	}
+
+	// Publisher client using the same connection
+	rabbitMQPublishClient, err = internal.NewRabbitMQClient(conn)
+	if err != nil {
+		log.Fatal("Failed to create RabbitMQ publisher client:", err)
+	}
+
+	// RPC client using the same connection
+	rabbitmqRPCClient, err = internal.NewRabbitMQClient(conn)
+	if err != nil {
+		log.Fatal("Failed to create RabbitMQ RPC client:", err)
+	}
+
+	log.Println("RabbitMQ clients successfully initialized with a single connection...")
+}
+
+func setupMongoDB() {
+	var err error
+	mongoConn := options.Client().ApplyURI(loadConfig.MongoDBConnectionURI)
+	mongoClient, err = mongo.Connect(ctx, mongoConn)
+	if err != nil {
+		log.Fatal("Failed to connect to MongoDB:", err)
 	}
 
 	if err := mongoClient.Ping(ctx, readpref.Primary()); err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to ping MongoDB:", err)
 	}
 
 	log.Println("MongoDB successfully connected...")
@@ -49,57 +95,54 @@ func init() {
 
 func main() {
 
-	// Set up a context with cancel for cleanup
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	defer func(mongoClient *mongo.Client, ctx context.Context) {
+		err := mongoClient.Disconnect(ctx)
+		if err != nil {
+			panic(err)
+		}
+	}(mongoClient, ctx)
 
-	loadConfig, err := config.LoadConfig(".")
-	if err != nil {
-		log.Fatal("Failed to load environment variables", err)
-	}
-	// Connect to RabbitMQ
-	conn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
-	if err != nil {
-		panic(err)
-	}
-	defer conn.Close()
+	defer func(rabbitmqConsumerClient *internal.RabbitMQClient) {
+		err := rabbitmqConsumerClient.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(rabbitmqConsumerClient)
 
-	client, err := internal.NewRabbitMQClient(conn)
-	if err != nil {
-		panic(err)
-	}
-	defer client.Close()
+	defer func(rabbitMQPublishClient *internal.RabbitMQClient) {
+		err := rabbitMQPublishClient.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(rabbitMQPublishClient)
 
-	// setup rpc
+	defer func(rabbitmqRPCClient *internal.RabbitMQClient) {
+		err := rabbitmqRPCClient.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(rabbitmqRPCClient)
 
-	rpcConn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
-	if err != nil {
-		panic(err)
-	}
-	defer rpcConn.Close()
+	// Context for StartConsumer
+	ctxConsumer, cancelConsumer := context.WithCancel(context.Background())
+	defer cancelConsumer()
 
-	rpcClient, err := internal.NewRabbitMQClient(rpcConn)
+	// Context for RPC
+	ctxRpc, cancelRpc := context.WithCancel(context.Background())
+	defer cancelRpc()
 
-	defer rpcClient.Close()
+	// Set up RabbitMQ Consumer
+	go func() {
+		rabbitmq := internal.NewRabbitMQConsumer(rabbitmqConsumerClient, rabbitMQPublishClient, scanService, ctxConsumer)
+		rabbitmq.StartConsumer(loadConfig.ScanQueueName, "scanner-service", "reposcanner", "repo.email.github-scan")
+	}()
 
-	rpcRabbitMQ := internal.NewRabbitMQRPC(rpcClient, scanService, ctx)
+	// Set up RabbitMQ RPC
+	go func() {
+		rpcRabbitMQ := internal.NewRabbitMQRPC(rabbitmqRPCClient, scanService, ctxRpc)
+		rpcRabbitMQ.StartConsumingRpcRequest(loadConfig.RpcQueueName, "rpc-request")
+	}()
 
-	rpcRabbitMQ.StartConsumingRpcRequest(loadConfig.RpcQueueName, "scanner-service")
-
-	// Set up publisher
-	publishConn, err := internal.ConnectRabbitMQ(loadConfig.RabbitMQURL)
-	if err != nil {
-		panic(err)
-	}
-	defer publishConn.Close()
-
-	publishClient, err := internal.NewRabbitMQClient(publishConn)
-	if err != nil {
-		panic(err)
-	}
-	defer publishClient.Close()
-
-	rabbitmq := internal.NewRabbitMQConsumer(client, publishClient, scanService, ctx)
-	// Start consuming messages
-	rabbitmq.StartConsumer(loadConfig.ScanQueueName, "scanner-service", "reposcanner", "repo.email.github-scan")
+	// Block main thread to keep consumers alive
+	select {}
 }

@@ -1,33 +1,37 @@
-# Base Image for Build Stage (Using Debian Buster Slim)
+# Base Image for Build Stage
 FROM node:20-buster-slim AS builder
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
 # Copy package files first to leverage Docker cache
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install development and production dependencies
+RUN npm install
 
-# Copy the rest of the application code
+# Copy the rest of the application source code
 COPY . .
 
 # Build the application
 RUN npm run build
 
 # Production Stage (smaller runtime image)
-FROM gcr.io/distroless/nodejs20 AS production
+FROM node:20-buster-slim AS production
 
-# Set working directory
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy built files and essential packages from the builder stage
+# Copy only necessary files from the builder stage
 COPY --from=builder /app/dist /app/dist
+COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/package.json /app
 
-# Expose the application port
+# Set environment variables
+ENV NODE_ENV=prod
+
+# Expose the application's port (update if using a different port)
 EXPOSE 3000
 
-# Start the application
+# Command to run the application
 CMD ["node", "dist/main.js"]

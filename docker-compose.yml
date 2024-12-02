@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  rabbit:
+    image: rabbitmq:3.11-management
+    container_name: rabbit
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./definitions.json:/etc/rabbitmq/definitions.json
+    command: >
+      rabbitmq-server
+      --definitions /etc/rabbitmq/rabbitmq_definitions.json
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    depends_on:
+      - postgres
+      - rabbit
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_DEV_SECRET: ${JWT_DEV_SECRET}
+      JWT_PROD_SECRET: ${JWT_PROD_SECRET}
+      PORT: 3000
+      HOST: localhost
+    ports:
+      - "3000:3000"
+  scanner-service:
+    build:
+      context: ./scanner-service   # This is where your Golang project should be located
+      dockerfile: Dockerfile  # Dockerfile for your Golang project
+    container_name: scanner-service
+    depends_on:
+      - rabbit
+      - mongo
+    environment:
+      RABBITMQ_URI: ${RABBITMQ_URI}
+      MONGO_CONNECTION_URI: ${MONGO_CONNECTION_URI}
+      AUTH_SERVICE_URI: ${AUTH_SERVICE_URI}
+      EMAIL_QUEUE_NAME: ${EMAIL_QUEUE_NAME}
+      SCAN_QUEUE_NAME: ${SCAN_QUEUE_NAME}
+      RPC_QUEUE_NAME: ${RPC_QUEUE_NAME}
+    command: go run main.go # Command to run your Golang application after build
+    restart: always
+  email-service:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    container_name: email-service
+    depends_on:
+      - rabbit
+    environment:
+      RABBITMQ_URI: ${RABBITMQ_URI}
+      EMAIL_QUEUE_NAME: ${EMAIL_QUEUE_NAME}
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_DEFAULT_FROM: ${MAIL_DEFAULT_FROM}
+
+volumes:
+  rabbitmq_data:
+  mongo-data:
+  scanner-service:
+  postgres-data:

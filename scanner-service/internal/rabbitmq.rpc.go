@@ -24,23 +24,50 @@ func NewRabbitMQRPC(client *RabbitMQClient, scanService services.ScanService, ct
 }
 
 func (rpc *RabbitMQRpc) StartConsumingRpcRequest(queue, consumer string) {
-	messages, err := rpc.client.Consume(queue, consumer, false) // Set autoAck to false for manual acknowledgment
+	log.Println("Starting RPC Consumer...")
+
+	// Consume messages from RabbitMQ
+	messages, err := rpc.client.Consume(queue, consumer, false)
 	if err != nil {
-		log.Fatal("Failed to register a consumer:", err)
+		log.Fatalf("Failed to register consumer: %v", err)
+		return
 	}
 
-	ch, _ := rpc.client.conn.Channel() // Ensure you have access to the RabbitMQ channel
-	if ch == nil {
-		log.Fatal("RabbitMQ channel is not initialized")
+	// Ensure RabbitMQ channel is initialized
+	ch, err := rpc.client.conn.Channel()
+	if err != nil {
+		log.Fatalf("Failed to create RabbitMQ channel: %v", err)
+		return
 	}
+	defer func(ch *amqp.Channel) {
+		err := ch.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(ch)
+
+	// Initialize blocking channel to keep the consumer running
+	blocking := make(chan struct{})
+
+	// Process messages
+	go func() {
+		for d := range messages {
+			if d.ReplyTo == "" {
+				log.Println("ReplyTo header is missing. Skipping message...")
+				_ = d.Nack(false, false) // Reject the message
+				continue
+			}
+
+			// Process the RPC request
+			go func(delivery amqp.Delivery) {
+				rpc.handleRPCRequest(delivery, ch)
+				_ = delivery.Ack(false) // Acknowledge after processing
+			}(d)
+		}
+	}()
 
 	log.Println("Waiting for RPC requests...")
-	for d := range messages {
-		go func(delivery amqp.Delivery) { // Use a goroutine to process each message
-			go rpc.handleRPCRequest(delivery, ch)
-			_ = delivery.Ack(false) // Acknowledge the message after processing
-		}(d)
-	}
+	<-blocking // Keep the function running
 }
 
 // HandleRPCRequest Handle RPC Requests with enhanced structure

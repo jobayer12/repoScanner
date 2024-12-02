@@ -1,31 +1,39 @@
-# Stage 1: Build the Go application
-FROM golang:alpine AS builder
+# Build stage: Use Golang to build the application binary
+FROM golang:1.21.1-alpine AS builder
+
+# Install build tools and dependencies
+RUN apk add --no-cache git gcc g++ libc-dev bash
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy go.mod, go.sum, and Makefile, then download dependencies
-COPY go.mod go.sum makefile ./
+# Copy go.mod and go.sum to the working directory
+COPY go.mod go.sum ./
 
+# Download Go modules
 RUN go mod download
 
-# Copy the rest of the code
+# Copy the source code into the container
 COPY . .
 
-# Build the application using makefile command
-RUN make build
+# Build the application binary
+RUN go build -o bin/main cmd/scanner/main.go
 
-# Stage 2: Set up the runtime environment with Trivy
-FROM golang:alpine AS production
+# Final stage: Use a minimal image to run the app
+FROM alpine:3.18
+
+# Install Trivy and dependencies
+RUN apk add --no-cache bash curl ca-certificates \
+  && curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
 # Set the working directory
 WORKDIR /app
 
-# Copy the built application from the builder stage
-COPY --from=builder /app/bin/main /app/main
+# Copy the built binary from the builder stage
+COPY --from=builder /app/bin/main .
 
-# Expose any necessary ports, e.g., 8080 for the API
+# Expose necessary ports (if applicable)
 EXPOSE 8080
 
-# Set the entrypoint command to run the application
-CMD ["./main"]
+# Set the entrypoint to execute the binary
+ENTRYPOINT ["./main"]
