@@ -1,3 +1,6 @@
+
+
+
 # RepoScanner
 `RepoScanner` is a project composed of three microservices that work together to authenticate users, scan GitHub repositories, and send notifications based on scan results. This setup enables secure access control, automated scanning, and email notifications to streamline repository management and security analysis.
 
@@ -5,6 +8,11 @@
 
 - [Prerequisites](#prerequisites)
 - [Microservices Overview](#microservices-overview)
+- [Docker Compose Setup](#docker-compose-setup)
+  - [Prerequisites](#1-prerequisites)
+  - [Environment Configuration](#2-environment-configuration)
+  - [Docker compose command](#3-docker-compose-command)
+  - [Access](#4-access)
 - [Setup Instructions](#setup-instructions)
   - [Clone the Repository](#1-clone-the-repository)
   - [Auth Service](#2-auth-service)
@@ -25,14 +33,52 @@ Before setting up the project locally, ensure the following are installed on you
 2. **Scan Service** - Built with **Golang**, this service is responsible for scanning GitHub repositories using Trivy. It communicates with the Auth and Email services to perform secure scans and notify users of the results.
 3. **Email Service** - Another **NestJS** service, this service sends email notifications based on scan results, utilizing the results from the Scan Service.
 
-## Setup Instructions
+## Docker Compose Setup
 
-### 1. Clone the Repository
+### 1. Prerequisites
+- Ensure Docker and Docker Compose are installed on your system
+- Clone the repository: `git clone https://github.com/jobayer12/repoScanner.git`
+- Navigate to project root: `cd repoScanner`
+
+### 2. Environment Configuration
+- Rename `.env.sample` to `.env` in root directory
+- Set the following Email Service Configuration in `.env`:
+  ```dotenv
+    MAIL_HOST=your_smtp_host
+    MAIL_PORT=your_smtp_port
+    MAIL_USERNAME=your_smtp_username
+    MAIL_PASSWORD=your_smtp_password
+    MAIL_DEFAULT_FROM=sender_email@example.com
+  ```
+### 3. Docker compose command
+
+```shell
+  # Start all services
+  docker-compose up -d
+```
+
+### 4. Access
+
+Swagger UI: http://localhost:3000/api
+
+Login Credentials:
+- Email: john.doe@example.com
+- Password: v0N6OI8
+
+#### Important Notes
+- Ensure all .env files are properly configured
+- Valid mail credentials are crucial for email service functionality
+
+
+## Setup Instructions for setup locally
+
+### Clone the Repository
 To get started, clone the repoScanner repository to your local machine:
   ```bash
   git clone https://github.com/jobayer12/repoScanner.git
   cd repoScanner
   ```
+
 
 ### 2. Auth Service
 
