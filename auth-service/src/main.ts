@@ -29,6 +29,7 @@ async function bootstrap() {
 
   app.useGlobalFilters(new HttpExceptionFilter());
   const configService: ConfigService = app.get(ConfigService);
+  console.log(configService.get('rabbitmq'))
   await app.listen(configService.get('common.port'));
 }
 bootstrap().catch((r) => console.log(r));

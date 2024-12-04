@@ -54,6 +54,7 @@ export class ScanService {
         .toPromise();
       return 'Github repository Queued';
     } catch (error) {
+      console.log(error)
       throw new BadRequestException('Failed to Queue github repository');
     }
   }

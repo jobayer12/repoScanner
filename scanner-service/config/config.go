@@ -37,7 +37,10 @@ func LoadConfig(path string) (config Config, err error) {
 		"RPC_QUEUE_NAME",
 		"AUTH_SERVICE_URI",
 	} {
-		viper.BindEnv(key) // Bind Viper to the environment variable
+		err := viper.BindEnv(key)
+		if err != nil {
+			return Config{}, err
+		} // Bind Viper to the environment variable
 	}
 
 	// Unmarshal the configuration into the Config struct

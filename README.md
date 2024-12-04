@@ -15,10 +15,9 @@
 
 ## Prerequisites
 
-Before setting up the project, ensure the following are installed on your local machine:
+Before setting up the project locally, ensure the following are installed on your local machine:
 
 - **[Trivy](https://aquasecurity.github.io/trivy/v0.18.3/installation/)**: A vulnerability scanner for containers and other artifacts, required to perform security scans.
-- **[ZeroMQ](https://zeromq.org/download/)**: A high-performance messaging library, required for inter-service communication.
 
 ## Microservices Overview
 
@@ -61,7 +60,7 @@ The Auth Service handles user registration, login, and JWT authentication.
 
 ### 3. Scan Service
 
-The Scan Service performs repository scans using Trivy and interacts with other services via ZeroMQ.
+The Scan Service performs repository scans using Trivy.
 
 #### Steps to Set Up
 
@@ -77,8 +76,6 @@ The Scan Service performs repository scans using Trivy and interacts with other 
     ```bash
     go mod download
     ```
-- Ensure Trivy and ZeroMQ are properly installed, as they are required to run this service.
-
 
 - Start the Scan Service:
     ```bash

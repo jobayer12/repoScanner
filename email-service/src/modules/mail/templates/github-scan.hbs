@@ -88,9 +88,10 @@
             <p style="margin: 0;">If the button above doesn't work, copy and paste the following link in your browser:
             </p>
             <p style="margin: 0;"><a href="{{scanResultLink}}" target="_blank">{{scanResultLink}}</a></p>
-            {{/if}}
-            {{#if isScanDone}}
-            <h2>Your GitHub repository scan is failed</h2>
+            {{else}}
+            <h2>
+                Your GitHub repository scan is failed
+            </h2>
             {{/if}}
         </div>
         <div class="footer">

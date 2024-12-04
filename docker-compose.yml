@@ -1,6 +1,27 @@
 version: '3.8'
 
 services:
+  rabbit:
+    image: rabbitmq:3.11-management
+    container_name: rabbit
+    ports:
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    volumes:
+      - ./rabbitmq-script.sh:/rabbitmq-script.sh
+      - ./.env:/tmp/rabbitmq.env  # Mount the .env file
+    command: >
+      bash -c "
+        rabbitmq-server &
+        sleep 10
+        rabbitmqctl wait /var/lib/rabbitmq/mnesia/rabbit@rabbitmq.pid
+        /rabbitmq-script.sh
+        wait
+      "
+    networks:
+      - app_network
   mongo:
     image: mongo:latest
     container_name: mongo
@@ -9,6 +30,8 @@ services:
     volumes:
       - mongo-data:/data/db
     restart: always
+    networks:
+      - app_network
   postgres:
     image: postgres:13
     container_name: postgres
@@ -20,21 +43,8 @@ services:
       - postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-  rabbit:
-    image: rabbitmq:3.11-management
-    container_name: rabbit
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-      - ./definitions.json:/etc/rabbitmq/definitions.json
-    command: >
-      rabbitmq-server
-      --definitions /etc/rabbitmq/rabbitmq_definitions.json
+    networks:
+      - app_network
   auth-service:
     build:
       context: ./auth-service
@@ -43,7 +53,13 @@ services:
     depends_on:
       - postgres
       - rabbit
+    networks:
+      - app_network
     environment:
+      RABBITMQ_URI: ${RABBITMQ_URI}
+      EMAIL_QUEUE_NAME: ${EMAIL_QUEUE_NAME}
+      SCAN_QUEUE_NAME: ${SCAN_QUEUE_NAME}
+      RPC_QUEUE_NAME: ${RPC_QUEUE_NAME}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${POSTGRES_DB}
@@ -72,6 +88,8 @@ services:
       RPC_QUEUE_NAME: ${RPC_QUEUE_NAME}
     command: go run main.go # Command to run your Golang application after build
     restart: always
+    networks:
+      - app_network
   email-service:
     build:
       context: ./email-service
@@ -79,6 +97,8 @@ services:
     container_name: email-service
     depends_on:
       - rabbit
+    networks:
+      - app_network
     environment:
       RABBITMQ_URI: ${RABBITMQ_URI}
       EMAIL_QUEUE_NAME: ${EMAIL_QUEUE_NAME}
@@ -93,3 +113,6 @@ volumes:
   mongo-data:
   scanner-service:
   postgres-data:
+networks:
+  app_network:
+    driver: bridge
