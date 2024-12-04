@@ -1,8 +1,9 @@
 
-
-
-# RepoScanner
+# Overview
 `RepoScanner` is a project composed of three microservices that work together to authenticate users, scan GitHub repositories, and send notifications based on scan results. This setup enables secure access control, automated scanning, and email notifications to streamline repository management and security analysis.
+
+# Diagram
+![Diagram](./assets/diagram.png)
 
 ## Table of Contents
 
