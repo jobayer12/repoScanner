@@ -3,7 +3,7 @@ import { MailService } from './mail.service';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { IVerifyEmail } from '../../common/interface/email-verify';
 import { IPasswordReset } from '../../common/interface/password-reset.interface';
-import {IGithubScan} from "../../common/interface/github-scan";
+import { IGithubScan } from '../../common/interface/github-scan';
 
 @Controller()
 export class MailController {
@@ -20,7 +20,6 @@ export class MailController {
 
   @EventPattern('repo.email.github-scan')
   async sendScanResult(@Payload() payload: IGithubScan): Promise<void> {
-    console.log('send github result', payload)
     try {
       await this.mailService.sendScanResult(payload);
     } catch (error) {
