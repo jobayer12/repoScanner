@@ -54,7 +54,6 @@ export class ScanService {
         .toPromise();
       return 'Github repository Queued';
     } catch (error) {
-      console.log(error)
       throw new BadRequestException('Failed to Queue github repository');
     }
   }
@@ -75,7 +74,9 @@ export class ScanService {
       }
       return response;
     } catch (error) {
-      throw new NotFoundException(error.message ?? 'Failed to load scan details');
+      throw new NotFoundException(
+        error.message ?? 'Failed to load scan details',
+      );
     }
   }
 }

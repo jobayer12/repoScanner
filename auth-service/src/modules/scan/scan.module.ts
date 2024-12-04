@@ -18,7 +18,6 @@ import { ConfigService } from '@nestjs/config';
           options: {
             urls: [configService.get<string>('rabbitmq.url')],
             queue: configService.get<string>('rabbitmq.scanQueue'),
-
             queueOptions: {
               durable: true,
             },
